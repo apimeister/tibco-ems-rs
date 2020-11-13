@@ -6,5 +6,6 @@ edition = "2018"
 license = "Apache-2.0"
 keywords = ["tibco","ems"]
 links = "tibems64"
+repository = "https://github.com/apimeister/tibco-ems-rs/"
 
 [dependencies]

@@ -15,12 +15,12 @@ extern "C" {
       destType: tibemsDestinationType,
       name: *const c_char) -> tibems_status;
   //admin API
-  pub fn tibemsAdmin_Create(admin: *mut usize,
+  pub fn tibemsAdmin_Create(admin: *mut tibemsAdmin,
       url: *const c_char, userName: *const c_char,
       password: *const c_char, sslparams: *mut c_void) -> tibems_status;
-  pub fn tibemsAdmin_Close(admin: usize) -> tibems_status;
+  pub fn tibemsAdmin_Close(admin: tibemsAdmin) -> tibems_status;
   pub fn tibemsAdmin_GetInfo(
-      admin: usize,
+      admin: tibemsAdmin,
       serverInfo: *mut usize) -> tibems_status;
   pub fn tibemsServerInfo_GetQueueCount(
       serverInfo: usize,
@@ -32,7 +32,7 @@ extern "C" {
   pub fn tibemsDestinationInfo_Destroy(
       destInfo: usize) -> tibems_status;
   pub fn tibemsAdmin_GetDestination(
-      admin: usize,
+      admin: tibemsAdmin,
       destInfo: *mut usize,
       destName: *const c_char,
       destType: usize) -> tibems_status;
@@ -46,17 +46,17 @@ extern "C" {
       destInfo: usize,
       overflowPolicy: *mut usize) -> tibems_status;
   pub fn tibemsAdmin_GetDestinations(
-      admin: usize,
+      admin: tibemsAdmin,
       collection: *mut usize,
       pattern: *const c_char,
       destType: tibemsDestinationType,
       permType: tibems_permType,
       statOnly: tibems_bool) ->tibems_status;
   pub fn tibemsAdmin_GetCommandTimeout(
-      admin: usize,
+      admin: tibemsAdmin,
       timeout: *mut i64);
   pub fn tibemsAdmin_SetCommandTimeout(
-      admin: usize,
+      admin: tibemsAdmin,
       timeout: i64) -> tibems_status;
   pub fn tibemsCollection_GetFirst(
       collection: usize,
@@ -81,6 +81,11 @@ extern "C" {
 #[allow(dead_code)]
 #[repr(C)]
 pub struct tibemsErrorContext { pub _private: [u8; 0] }
+
+#[allow(dead_code)]
+#[repr(C)]
+#[derive(Copy,Clone,Debug)]
+pub struct tibemsAdmin { pub _val: usize }
 
 
 #[allow(dead_code)]

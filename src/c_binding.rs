@@ -80,7 +80,7 @@ extern "C" {
 
 #[allow(dead_code)]
 #[repr(C)]
-pub struct tibemsErrorContext { pub _private: [u8; 0] }
+pub struct tibemsErrorContext { pub _val: [u8; 0] }
 
 #[allow(dead_code)]
 #[repr(C)]

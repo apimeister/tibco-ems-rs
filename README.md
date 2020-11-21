@@ -54,4 +54,4 @@ fn main() {
 }
 ```
 
-More example are in the examples directory.
+More examples can be found in the examples directory.

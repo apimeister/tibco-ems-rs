@@ -90,7 +90,7 @@ extern "C" {
     username: *const c_char,
     password: *const c_char) -> tibems_status;
   pub fn tibemsConnection_Start(
-    connection: *mut tibemsConnection) -> tibems_status;
+    connection: usize) -> tibems_status;
   pub fn tibemsConnection_CreateSession(
     connection: usize,
     session: *mut usize,
@@ -135,6 +135,21 @@ extern "C" {
     value: *const c_char) -> tibems_status;
   pub fn tibemsTextMsg_Create(
     message: *mut usize) -> tibems_status;
+  pub fn tibemsSession_CreateConsumer(
+    session: usize,
+    consumer: *mut usize,
+    destination: usize,
+    messageSelector: *const c_char,
+    noLocal: tibems_bool) -> tibems_status;
+  pub fn tibemsMsgConsumer_Receive(
+    msgConsumer: usize,
+    message: *mut usize) -> tibems_status;
+  pub fn tibemsMsg_GetBodyType(
+    message: usize,
+    bodyType: *mut tibemsMsgType) -> tibems_status;
+  pub fn tibemsTextMsg_GetText(
+    message: usize,
+    text: *const *const c_char) -> tibems_status;
 }
 
 #[allow(dead_code)]
@@ -174,6 +189,21 @@ pub struct tibemsAdmin { pub _val: usize }
 #[repr(C)]
 #[derive(Copy,Clone,Debug)]
 pub struct tibemsLookupContext { pub _val: [u8; 0] }
+
+#[allow(dead_code)]
+#[allow(non_camel_case_types)]
+#[derive(Debug)]
+#[repr(C)]
+pub enum tibemsMsgType{
+    TIBEMS_MESSAGE_UNKNOWN                      = 0,
+    TIBEMS_MESSAGE                              = 1,
+    TIBEMS_BYTES_MESSAGE                        = 2,
+    TIBEMS_MAP_MESSAGE                          = 3,
+    TIBEMS_OBJECT_MESSAGE                       = 4,
+    TIBEMS_STREAM_MESSAGE                       = 5,
+    TIBEMS_TEXT_MESSAGE                         = 6,
+    TIBEMS_MESSAGE_UNDEFINED                    = 256
+}
 
 #[allow(dead_code)]
 #[allow(non_camel_case_types)]

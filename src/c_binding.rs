@@ -4,78 +4,137 @@ use std::os::raw::c_char;
 #[allow(dead_code)]
 extern "C" {
   pub fn tibemsErrorContext_Create(
-      errorContext: *mut c_void) -> tibems_status;
+    errorContext: *mut c_void) -> tibems_status;
   pub fn tibemsErrorContext_GetLastErrorString(
-      errorContext: *mut c_void,
-      str: *mut c_char) -> tibems_status;
+    errorContext: *mut c_void,
+    str: *mut c_char) -> tibems_status;
   pub fn tibemsSSLParams_Create() -> *mut c_void;
   pub fn tibemsSSLParams_Destroy(sslParams: *mut c_void);
   pub fn tibemsStatus_GetText(status: tibems_status) -> *const c_char;
-  pub fn tibemsDestination_Create(destination: *mut usize,
-      destType: tibemsDestinationType,
-      name: *const c_char) -> tibems_status;
   //admin API
   pub fn tibemsAdmin_Create(admin: *mut tibemsAdmin,
-      url: *const c_char, userName: *const c_char,
-      password: *const c_char, sslparams: *mut c_void) -> tibems_status;
+    url: *const c_char, userName: *const c_char,
+    password: *const c_char, sslparams: *mut c_void) -> tibems_status;
   pub fn tibemsAdmin_Close(admin: tibemsAdmin) -> tibems_status;
   pub fn tibemsAdmin_GetInfo(
-      admin: tibemsAdmin,
-      serverInfo: *mut usize) -> tibems_status;
+    admin: tibemsAdmin,
+    serverInfo: *mut usize) -> tibems_status;
   pub fn tibemsServerInfo_GetQueueCount(
-      serverInfo: usize,
-      count: *mut usize) -> tibems_status;
+    serverInfo: usize,
+    count: *mut usize) -> tibems_status;
   pub fn tibemsDestinationInfo_Create(
-      destInfo: *mut usize,
-      destName: *const c_char,
-      destType: usize) -> tibems_status;
+    destInfo: *mut usize,
+    destName: *const c_char,
+    destType: usize) -> tibems_status;
   pub fn tibemsDestinationInfo_Destroy(
-      destInfo: usize) -> tibems_status;
+    destInfo: usize) -> tibems_status;
   pub fn tibemsAdmin_GetDestination(
-      admin: tibemsAdmin,
-      destInfo: *mut usize,
-      destName: *const c_char,
-      destType: usize) -> tibems_status;
+    admin: tibemsAdmin,
+    destInfo: *mut usize,
+    destName: *const c_char,
+    destType: usize) -> tibems_status;
   pub fn tibemsDestinationInfo_GetPendingMessageCount(
-      destInfo: usize,
-      count: *mut i64 ) -> tibems_status;
+    destInfo: usize,
+    count: *mut i64 ) -> tibems_status;
   pub fn tibemsDestinationInfo_GetConsumerCount(
-      destInfo: usize,
-      count: &mut usize) -> tibems_status;
+    destInfo: usize,
+    count: &mut usize) -> tibems_status;
   pub fn tibemsDestinationInfo_GetOverflowPolicy(
-      destInfo: usize,
-      overflowPolicy: *mut usize) -> tibems_status;
+    destInfo: usize,
+    overflowPolicy: *mut usize) -> tibems_status;
   pub fn tibemsAdmin_GetDestinations(
-      admin: tibemsAdmin,
-      collection: *mut usize,
-      pattern: *const c_char,
-      destType: tibemsDestinationType,
-      permType: tibems_permType,
-      statOnly: tibems_bool) ->tibems_status;
+    admin: tibemsAdmin,
+    collection: *mut usize,
+    pattern: *const c_char,
+    destType: tibemsDestinationType,
+    permType: tibems_permType,
+    statOnly: tibems_bool) ->tibems_status;
   pub fn tibemsAdmin_GetCommandTimeout(
-      admin: tibemsAdmin,
-      timeout: *mut i64);
+    admin: tibemsAdmin,
+    timeout: *mut i64);
   pub fn tibemsAdmin_SetCommandTimeout(
-      admin: tibemsAdmin,
-      timeout: i64) -> tibems_status;
+    admin: tibemsAdmin,
+    timeout: i64) -> tibems_status;
   pub fn tibemsCollection_GetFirst(
-      collection: usize,
-      collection_ptr: *mut usize) -> tibems_status;
+    collection: usize,
+    collection_ptr: *mut usize) -> tibems_status;
   pub fn tibemsCollection_GetNext(
-      collection: usize,
-      collection_ptr: *mut usize) -> tibems_status;
+    collection: usize,
+    collection_ptr: *mut usize) -> tibems_status;
   pub fn tibemsCollection_Destroy(
-      collection: usize) -> tibems_status;
+    collection: usize) -> tibems_status;
   pub fn tibemsDestinationInfo_GetName(
-      destInfo: usize,
-      name: *const c_char,
-      name_len: usize) -> tibems_status;
+    destInfo: usize,
+    name: *const c_char,
+    name_len: usize) -> tibems_status;
   pub fn tibemsTopicInfo_GetSubscriptionCount(
-      topicInfo: usize,
-      count: *mut i64) -> tibems_status;
+    topicInfo: usize,
+    count: *mut i64) -> tibems_status;
   pub fn tibemsTopicInfo_GetDurableCount(
-      topicInfo: usize,
-      count: *mut i64) -> tibems_status;
+    topicInfo: usize,
+    count: *mut i64) -> tibems_status;
+  pub fn tibemsConnectionFactory_Create() -> *mut tibemsConnectionFactory;
+  pub fn tibemsConnectionFactory_Destroy(factory: *mut tibemsConnectionFactory) -> tibems_status;
+  pub fn tibemsConnectionFactory_SetServerURL(
+    factory: *mut tibemsConnectionFactory,
+    url: *const c_char) -> tibems_status;
+  pub fn tibemsConnectionFactory_SetUserName(
+    factory: *mut tibemsConnectionFactory,
+    username: *const c_char) -> tibems_status;
+  pub fn tibemsConnectionFactory_SetUserPassword(
+    factory: *mut tibemsConnectionFactory,
+    password: *const c_char) -> tibems_status;
+  pub fn tibemsConnectionFactory_CreateConnection(
+    factory: *mut tibemsConnectionFactory,
+    connection: *mut usize,
+    username: *const c_char,
+    password: *const c_char) -> tibems_status;
+  pub fn tibemsConnection_Start(
+    connection: *mut tibemsConnection) -> tibems_status;
+  pub fn tibemsConnection_CreateSession(
+    connection: usize,
+    session: *mut usize,
+    transacted: tibems_bool,
+    acknowledgeMode: tibemsAcknowledgeMode) -> tibems_status;
+  pub fn tibemsSession_Close(session: usize) -> tibems_status;
+  pub fn tibemsDestination_Create(
+    destination: *mut usize,
+    destType: tibemsDestinationType,
+    name: *const c_char) -> tibems_status;  
+  pub fn tibemsSession_CreateProducer(
+    session: usize,
+    producer: *mut usize,
+    destination: usize ) -> tibems_status;
+  pub fn tibemsSession_CreateTextMessage(
+    session: usize,
+    textMsg: *mut tibemsMsg) -> tibems_status;
+  pub fn tibemsSession_CreateMessage(
+    session: usize,
+    textMsg: *mut usize) -> tibems_status;
+  pub fn tibemsMsgProducer_Send(
+    msgProducer: usize,
+    message: usize) -> tibems_status;
+  pub fn tibemsQueue_Create(
+    queue: *mut tibemsDestination,
+    queueName: *const c_char) -> tibems_status;
+  pub fn tibemsLookupContext_Create(
+    context: *mut tibemsLookupContext,
+    brokerURL: *const c_char,
+    username: *const c_char,
+    password: *const c_char) -> tibems_status;
+  pub fn tibemsLookupContext_LookupDestination(
+    context: tibemsLookupContext,
+    name: *const c_char,
+    destination: *mut tibemsDestination) -> tibems_status;
+  pub fn tibemsTextMsg_SetText(
+    message: usize,
+    text: *const c_char) -> tibems_status;
+  pub fn tibemsMsg_SetStringProperty(
+    message: usize, 
+    name: *const c_char,
+    value: *const c_char) -> tibems_status;
+  pub fn tibemsTextMsg_Create(
+    message: *mut usize) -> tibems_status;
 }
 
 #[allow(dead_code)]
@@ -84,19 +143,47 @@ pub struct tibemsErrorContext { pub _val: [u8; 0] }
 
 #[allow(dead_code)]
 #[repr(C)]
+pub struct tibemsConnectionFactory { pub _val: [u8; 0] }
+
+#[allow(dead_code)]
+#[repr(C)]
+pub struct tibemsConnection { pub _val: [u8; 0] }
+
+#[allow(dead_code)]
+#[repr(C)]
+pub struct tibemsMsgProducer { pub _val: [u8; 0] }
+
+#[allow(dead_code)]
+#[repr(C)]
+pub struct tibemsSession { pub _val: usize }
+
+#[allow(dead_code)]
+#[repr(C)]
+pub struct tibemsDestination { pub _val: usize }
+
+#[allow(dead_code)]
+#[repr(C)]
+pub struct tibemsMsg { pub _val: usize }
+
+#[allow(dead_code)]
+#[repr(C)]
 #[derive(Copy,Clone,Debug)]
 pub struct tibemsAdmin { pub _val: usize }
 
+#[allow(dead_code)]
+#[repr(C)]
+#[derive(Copy,Clone,Debug)]
+pub struct tibemsLookupContext { pub _val: [u8; 0] }
 
 #[allow(dead_code)]
 #[allow(non_camel_case_types)]
 #[derive(Debug)]
 #[repr(C)]
 pub enum tibemsDestinationType{
-    TIBEMS_UNKNOWN                              = 0,
-    TIBEMS_QUEUE                                = 1,
-    TIBEMS_TOPIC                                = 2,
-    TIBEMS_DEST_UNDEFINED                       = 256
+  TIBEMS_UNKNOWN                              = 0,
+  TIBEMS_QUEUE                                = 1,
+  TIBEMS_TOPIC                                = 2,
+  TIBEMS_DEST_UNDEFINED                       = 256
 }
 
 #[allow(dead_code)]
@@ -104,8 +191,8 @@ pub enum tibemsDestinationType{
 #[derive(Debug)]
 #[repr(C)]
 pub enum tibems_bool{
-    TIBEMS_FALSE  = 0,
-    TIBEMS_TRUE   = 1
+  TIBEMS_FALSE  = 0,
+  TIBEMS_TRUE   = 1
 }
 
 #[allow(dead_code)]
@@ -113,10 +200,25 @@ pub enum tibems_bool{
 #[derive(Debug)]
 #[repr(C)]
 pub enum tibems_permType{
-    TIBEMS_DEST_GET_STATIC = 1,
-    TIBEMS_DEST_GET_DYNAMIC = 2,
-    TIBEMS_DEST_GET_NOTEMP = 3,
-    TIBEMS_DEST_GET_ALL = 4,
+  TIBEMS_DEST_GET_STATIC = 1,
+  TIBEMS_DEST_GET_DYNAMIC = 2,
+  TIBEMS_DEST_GET_NOTEMP = 3,
+  TIBEMS_DEST_GET_ALL = 4,
+}
+
+#[allow(dead_code)]
+#[allow(non_camel_case_types)]
+#[derive(Debug)]
+#[repr(C)]
+pub enum tibemsAcknowledgeMode{
+  TIBEMS_SESSION_TRANSACTED                   = 0,
+  TIBEMS_AUTO_ACKNOWLEDGE                     = 1,
+  TIBEMS_CLIENT_ACKNOWLEDGE                   = 2,
+  TIBEMS_DUPS_OK_ACKNOWLEDGE                  = 3,
+
+  TIBEMS_NO_ACKNOWLEDGE                       = 22,   /* Extensions */
+  TIBEMS_EXPLICIT_CLIENT_ACKNOWLEDGE          = 23,
+  TIBEMS_EXPLICIT_CLIENT_DUPS_OK_ACKNOWLEDGE  = 24
 }
 
 #[allow(dead_code)]

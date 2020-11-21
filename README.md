@@ -3,8 +3,9 @@
 
 Rust bindings for the Tibco EMS C library.
 
-A low-level binding in provided by the module tibco_ems::c_binding.
-A high-level binding is not yet part of this package.
+A high-level API is provided to simplify the interaction. 
+Since the high-level API does not fully cover the EMS capabilities, a low-level binding in provided by the sub-module tibco_ems::c_binding.
+
 
 # License
 tibco_ems is licensed under Apache License, Version 2.0 (LICENSE-APACHE or http://www.apache.org/licenses/LICENSE-2.0).

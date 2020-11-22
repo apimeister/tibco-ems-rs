@@ -39,9 +39,9 @@ fn main() {
   let user="admin";
   let password="admin";
 
-  let connection = tibco_ems::connect(url.to_string(),user.to_string(),password.to_string());
+  let connection = tibco_ems::connect(url.to_string(),user.to_string(),password.to_string()).unwrap();
 
-  let session = tibco_ems::session(connection);
+  let session = tibco_ems::session(connection).unwrap();
 
   let msg = TextMessage{body:"hallo welt".to_string(),header: None};
 
@@ -49,7 +49,7 @@ fn main() {
     destination_type: DestinationType::Queue,
     destination_name: "myqueue".to_string(),
   };
-  tibco_ems::send_text_message(session, destination, msg);
+  let _ignore = tibco_ems::send_message(session, destination, msg.into());
 
   tibco_ems::session_close(session);
 }
@@ -68,26 +68,41 @@ fn main() {
   let user="admin";
   let password="admin";
 
-  let connection = tibco_ems::connect(url.to_string(),user.to_string(),password.to_string());
+  let connection = tibco_ems::connect(url.to_string(),user.to_string(),password.to_string()).unwrap();
 
-  let session = tibco_ems::session(connection);
+  let session = tibco_ems::session(connection).unwrap();
 
   let destination = Destination{
     destination_type: DestinationType::Queue,
     destination_name: "myqueue".to_string(),
   };
-  let consumer = tibco_ems::queue_consumer(session,destination,None);
+  let consumer = tibco_ems::queue_consumer(session,destination,None).unwrap();
   
-  let msg = tibco_ems::receive_message(consumer, None);
+  println!("waiting 10 seconds for a message");
+  let msg_result = tibco_ems::receive_message(consumer, Some(10000));
 
-  match msg.message_type {
-    MessageType::TextMessage =>{
-      println!("received text message");
-      let text_message = TextMessage::from(msg);
-      println!("content: {}", text_message.body);
+  match msg_result {
+    Ok(result_value) => {
+      match result_value {
+        Some(message) => {
+          match message.message_type {
+            MessageType::TextMessage =>{
+              println!("received text message");
+              let text_message = TextMessage::from(message);
+              println!("content: {}", text_message.body);
+            },
+            _ => {
+              println!("unknown type");
+            }
+          }    
+        },
+        None =>{
+          println!("no message returned");
+        },
+      }
     },
-    _ => {
-      println!("unknown type");
+    Err(status) => {
+      println!("returned status: {:?}",status);
     }
   }
   tibco_ems::session_close(session);

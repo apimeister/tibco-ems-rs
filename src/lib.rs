@@ -30,6 +30,7 @@ pub struct TextMessage{
   pub header: Option<HashMap<String,String>>
 }
 
+/// represents a generic Message which can be transformed into TextMessage through From,Into trait.
 #[allow(dead_code)]
 #[derive(Debug,Clone)]
 pub struct Message{
@@ -137,6 +138,7 @@ pub fn queue_consumer(session: Session, destination: Destination, selector: Opti
   Ok(consumer)
 }
 
+/// close a session
 pub fn session_close(session: Session){
   unsafe{
     let status = c_binding::tibemsSession_Close(session.pointer);

@@ -144,6 +144,10 @@ extern "C" {
   pub fn tibemsMsgConsumer_Receive(
     msgConsumer: usize,
     message: *mut usize) -> tibems_status;
+  pub fn tibemsMsgConsumer_ReceiveTimeout(
+    msgConsumer: usize,
+    message: *mut usize,
+    timeout: i64) -> tibems_status;
   pub fn tibemsMsg_GetBodyType(
     message: usize,
     bodyType: *mut tibemsMsgType) -> tibems_status;

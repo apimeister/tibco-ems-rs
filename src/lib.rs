@@ -1,10 +1,12 @@
 use std::ffi::CString;
 use std::ffi::CStr;
 use std::collections::HashMap;
+use std::io::Error;
 
 pub mod c_binding;
 
 #[allow(dead_code)]
+#[derive(Debug,Copy,Clone)]
 pub struct Connection{
   pointer: usize
 }
@@ -45,6 +47,16 @@ impl From<Message> for TextMessage {
   }
 }
 
+impl From<TextMessage> for Message {
+  fn from(msg: TextMessage) -> Self {
+    Message{
+      message_type: MessageType::TextMessage,
+      body_text: Some(msg.body),
+      body_binary: None,
+    }
+  }
+}
+
 #[allow(dead_code)]
 #[derive(Debug,Clone)]
 pub struct Destination{
@@ -65,7 +77,9 @@ pub enum DestinationType{
   Queue,
   Topic
 }
-pub fn connect(url: String, user: String, password: String) -> Connection {
+
+/// open a connection to the Tibco EMS server
+pub fn connect(url: String, user: String, password: String) -> Result<Connection, Error> {
   let conn: Connection;
   let mut connection_pointer: usize = 0;
   unsafe{
@@ -78,10 +92,11 @@ pub fn connect(url: String, user: String, password: String) -> Connection {
     let status = c_binding::tibemsConnection_Start(connection_pointer);
     println!("tibemsConnectionFactory_CreateConnection: {:?}",status);
   }
-  conn
+  Ok(conn)
 }
 
-pub fn session(connection: Connection)-> Session {
+/// open a session
+pub fn session(connection: Connection)-> Result<Session,Error> {
   let session: Session;
   unsafe{
     let mut session_pointer:usize = 0;
@@ -89,10 +104,11 @@ pub fn session(connection: Connection)-> Session {
     println!("tibemsConnection_CreateSession: {:?}",status);
     session = Session{pointer: session_pointer};
   }
-  session
+  Ok(session)
 }
 
-pub fn queue_consumer(session: Session, destination: Destination, selector: Option<String>)-> Consumer {
+/// open a message consumer
+pub fn queue_consumer(session: Session, destination: Destination, selector: Option<String>)-> Result<Consumer,Error> {
   let consumer: Consumer;
   let mut destination_pointer:usize = 0;
   unsafe{
@@ -109,11 +125,16 @@ pub fn queue_consumer(session: Session, destination: Destination, selector: Opti
     }
     //open consumer
     let mut consumer_pointer:usize = 0;
-    let status = c_binding::tibemsSession_CreateConsumer(session.pointer, &mut consumer_pointer,destination_pointer, std::ptr::null_mut(), c_binding::tibems_bool::TIBEMS_TRUE);
+    let selector_str;
+    match selector {
+      Some(val) => selector_str=CString::new(val).unwrap().as_ptr(),
+      _ => selector_str = std::ptr::null(),
+    }
+    let status = c_binding::tibemsSession_CreateConsumer(session.pointer, &mut consumer_pointer,destination_pointer, selector_str, c_binding::tibems_bool::TIBEMS_TRUE);
     println!("tibemsSession_CreateConsumer: {:?}",status);
     consumer = Consumer{pointer: consumer_pointer};
   }
-  consumer
+  Ok(consumer)
 }
 
 pub fn session_close(session: Session){
@@ -123,7 +144,8 @@ pub fn session_close(session: Session){
   }
 }
 
-pub fn receive_message(consumer: Consumer, wait_time: Option<u64>) -> Message {
+/// receive messages from a consumer
+pub fn receive_message(consumer: Consumer, wait_time_ms: Option<i64>) -> Result<Option<Message>,Error> {
   let mut msg:Message = Message{
     message_type: MessageType::TextMessage,
     body_text: None,
@@ -131,8 +153,19 @@ pub fn receive_message(consumer: Consumer, wait_time: Option<u64>) -> Message {
   };
   unsafe{
     let mut msg_pointer:usize = 0;
-    let status = c_binding::tibemsMsgConsumer_Receive(consumer.pointer, &mut msg_pointer);
-    println!("tibemsMsgConsumer_Receive: {:?}",status);
+    match wait_time_ms {
+      Some(time_ms) => {
+        let status = c_binding::tibemsMsgConsumer_ReceiveTimeout(consumer.pointer, &mut msg_pointer, time_ms);
+        println!("tibemsMsgConsumer_Receive: {:?}",status);
+        if status == c_binding::tibems_status::TIBEMS_TIMEOUT {
+          return Ok(None)
+        }
+      },
+      None => {
+        let status = c_binding::tibemsMsgConsumer_Receive(consumer.pointer, &mut msg_pointer);
+        println!("tibemsMsgConsumer_Receive: {:?}",status);    
+      },
+    }
     let mut msg_type: c_binding::tibemsMsgType = c_binding::tibemsMsgType::TIBEMS_TEXT_MESSAGE;
     let status = c_binding::tibemsMsg_GetBodyType(msg_pointer, &mut msg_type);
     println!("tibemsMsg_GetBodyType: {:?}",status);
@@ -155,9 +188,10 @@ pub fn receive_message(consumer: Consumer, wait_time: Option<u64>) -> Message {
       }
     }
   }
-  msg
+  Ok(Some(msg))
 }
-pub fn send_text_message(session: Session, destination: Destination, message: TextMessage){
+/// sending a message to a destination (only queues are supported)
+pub fn send_message(session: Session, destination: Destination, message: Message) -> Result<(),Error>{
   let mut dest:usize = 0;
   unsafe{
     match destination.destination_type {
@@ -174,11 +208,20 @@ pub fn send_text_message(session: Session, destination: Destination, message: Te
     let status = c_binding::tibemsSession_CreateProducer(session.pointer,&mut producer,dest);
     println!("tibemsSession_CreateProducer: {:?}",status);
     let mut msg: usize = 0;
-    let status = c_binding::tibemsTextMsg_Create(&mut msg);
-    println!("tibemsTextMsg_Create: {:?}",status);
-    let status = c_binding::tibemsTextMsg_SetText(msg,CString::new(message.body).unwrap().as_ptr());
-    println!("tibemsTextMsg_SetText: {:?}",status);
+    match message.message_type {
+      MessageType::TextMessage =>{
+        let status = c_binding::tibemsTextMsg_Create(&mut msg);
+        println!("tibemsTextMsg_Create: {:?}",status);    
+        let status = c_binding::tibemsTextMsg_SetText(msg,CString::new(message.body_text.unwrap()).unwrap().as_ptr());
+        println!("tibemsTextMsg_SetText: {:?}",status);
+      }
+      _ => {
+        let status = c_binding::tibemsTextMsg_Create(&mut msg);
+        println!("tibemsTextMsg_Create: {:?}",status);    
+      }
+    }
     let status = c_binding::tibemsMsgProducer_Send(producer, msg);
     println!("tibemsMsgProducer_Send: {:?}",status);
   }
+  Ok(())
 }

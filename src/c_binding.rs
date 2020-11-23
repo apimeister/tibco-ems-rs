@@ -73,41 +73,54 @@ extern "C" {
   pub fn tibemsTopicInfo_GetDurableCount(
     topicInfo: usize,
     count: *mut i64) -> tibems_status;
+  /// Create a connection factory.
   pub fn tibemsConnectionFactory_Create() -> *mut tibemsConnectionFactory;
+  /// Destroy a connection factory object.
   pub fn tibemsConnectionFactory_Destroy(factory: *mut tibemsConnectionFactory) -> tibems_status;
+  /// Set the server URL.
   pub fn tibemsConnectionFactory_SetServerURL(
     factory: *mut tibemsConnectionFactory,
     url: *const c_char) -> tibems_status;
+  /// Set a connection factory’s username.
   pub fn tibemsConnectionFactory_SetUserName(
     factory: *mut tibemsConnectionFactory,
     username: *const c_char) -> tibems_status;
+  /// Set the password used by the connection factory to authenticate itself with the EMS Server.
   pub fn tibemsConnectionFactory_SetUserPassword(
     factory: *mut tibemsConnectionFactory,
     password: *const c_char) -> tibems_status;
+  /// Create a connection object.
   pub fn tibemsConnectionFactory_CreateConnection(
     factory: *mut tibemsConnectionFactory,
     connection: *mut usize,
     username: *const c_char,
     password: *const c_char) -> tibems_status;
+  /// Start delivering inbound messages
   pub fn tibemsConnection_Start(
     connection: usize) -> tibems_status;
+  /// Create a session object.
   pub fn tibemsConnection_CreateSession(
     connection: usize,
     session: *mut usize,
     transacted: tibems_bool,
     acknowledgeMode: tibemsAcknowledgeMode) -> tibems_status;
+  /// Close a session; reclaim resources.
   pub fn tibemsSession_Close(session: usize) -> tibems_status;
+  /// Create a destination object.
   pub fn tibemsDestination_Create(
     destination: *mut usize,
     destType: tibemsDestinationType,
-    name: *const c_char) -> tibems_status;  
+    name: *const c_char) -> tibems_status;
+  /// Create a message producer.
   pub fn tibemsSession_CreateProducer(
     session: usize,
     producer: *mut usize,
     destination: usize ) -> tibems_status;
+  /// Create a text message.
   pub fn tibemsSession_CreateTextMessage(
     session: usize,
     textMsg: *mut tibemsMsg) -> tibems_status;
+  /// Create a message.
   pub fn tibemsSession_CreateMessage(
     session: usize,
     textMsg: *mut usize) -> tibems_status;
@@ -117,40 +130,50 @@ extern "C" {
   pub fn tibemsQueue_Create(
     queue: *mut tibemsDestination,
     queueName: *const c_char) -> tibems_status;
+  /// Create a new EMS lookup context object.
   pub fn tibemsLookupContext_Create(
     context: *mut tibemsLookupContext,
     brokerURL: *const c_char,
     username: *const c_char,
     password: *const c_char) -> tibems_status;
+  /// Look up an object in the naming server.
   pub fn tibemsLookupContext_LookupDestination(
     context: tibemsLookupContext,
     name: *const c_char,
     destination: *mut tibemsDestination) -> tibems_status;
+  /// Set the data string of a text message.
   pub fn tibemsTextMsg_SetText(
     message: usize,
     text: *const c_char) -> tibems_status;
+  /// Set the value of a message property.
   pub fn tibemsMsg_SetStringProperty(
     message: usize, 
     name: *const c_char,
     value: *const c_char) -> tibems_status;
+  /// Create a text message.
   pub fn tibemsTextMsg_Create(
     message: *mut usize) -> tibems_status;
+  /// Create a message consumer
   pub fn tibemsSession_CreateConsumer(
     session: usize,
     consumer: *mut usize,
     destination: usize,
     messageSelector: *const c_char,
     noLocal: tibems_bool) -> tibems_status;
+  /// Receive a message (synchronous).
   pub fn tibemsMsgConsumer_Receive(
     msgConsumer: usize,
     message: *mut usize) -> tibems_status;
+  /// Receive a message (synchronous, blocks up to a time limit).
   pub fn tibemsMsgConsumer_ReceiveTimeout(
     msgConsumer: usize,
     message: *mut usize,
     timeout: i64) -> tibems_status;
+  /// Get the body type of a message.
   pub fn tibemsMsg_GetBodyType(
     message: usize,
     bodyType: *mut tibemsMsgType) -> tibems_status;
+  /// Get the string data from a text message.
   pub fn tibemsTextMsg_GetText(
     message: usize,
     text: *const *const c_char) -> tibems_status;
@@ -249,9 +272,11 @@ pub enum tibemsAcknowledgeMode{
   TIBEMS_AUTO_ACKNOWLEDGE                     = 1,
   TIBEMS_CLIENT_ACKNOWLEDGE                   = 2,
   TIBEMS_DUPS_OK_ACKNOWLEDGE                  = 3,
-
-  TIBEMS_NO_ACKNOWLEDGE                       = 22,   /* Extensions */
+  /// Extensions to the JMS spec
+  TIBEMS_NO_ACKNOWLEDGE                       = 22,
+  /// Extensions to the JMS spec
   TIBEMS_EXPLICIT_CLIENT_ACKNOWLEDGE          = 23,
+  /// Extensions to the JMS spec
   TIBEMS_EXPLICIT_CLIENT_DUPS_OK_ACKNOWLEDGE  = 24
 }
 
@@ -260,14 +285,17 @@ pub enum tibemsAcknowledgeMode{
 #[derive(Debug, PartialEq)]
 #[repr(C)]
 pub enum tibems_status{
-    TIBEMS_OK                          = 0,
-
-    TIBEMS_ILLEGAL_STATE               = 1,
-    TIBEMS_INVALID_CLIENT_ID           = 2,
-    TIBEMS_INVALID_DESTINATION         = 3,
+  /// The call completed normally.
+  TIBEMS_OK                          = 0,
+  /// A function call or server request occurred in an inappropriate context. For example, tibemsSession_Commit indicates this status when the session is non-transactional.
+  TIBEMS_ILLEGAL_STATE               = 1,
+  /// The provider rejects the connection’s client ID. Setting a connection’s client ID to an invalid or duplicate value results in this exception. (A duplicate value is one that is already in use by another connection.)
+  TIBEMS_INVALID_CLIENT_ID           = 2,
+  /// tibemsd cannot locate the destination.
+  TIBEMS_INVALID_DESTINATION         = 3,
     TIBEMS_INVALID_SELECTOR            = 4,
-
-    TIBEMS_EXCEPTION                   = 5,
+  ///Non-specific error code.
+  TIBEMS_EXCEPTION                   = 5,
     TIBEMS_SECURITY_EXCEPTION          = 6,
 
     TIBEMS_MSG_EOF                     = 7,
@@ -283,9 +311,10 @@ pub enum tibems_status{
     TIBEMS_INVALID_HOSTNAME            = 17,
     TIBEMS_INVALID_PORT                = 18,
     TIBEMS_NO_MEMORY                   = 19,
-    TIBEMS_INVALID_ARG                 = 20,
-
-    TIBEMS_SERVER_LIMIT                = 21,
+  /// The function received an illegal value as an argument.
+  TIBEMS_INVALID_ARG                 = 20,
+  /// 	The server has exceeded the maximum number of licensed connections or hosts that it can service.
+  TIBEMS_SERVER_LIMIT                = 21,
 
     TIBEMS_MSG_DUPLICATE               = 22,
 
@@ -311,8 +340,8 @@ pub enum tibems_status{
     TIBEMS_CORRUPT_MSG                 = 45,
 
     TIBEMS_PRODUCER_FAILED             = 47,
-
-    TIBEMS_TIMEOUT                     = 50,
+  ///The timeout has expired while waiting for a message. See tibemsMsgConsumer_ReceiveTimeout.
+  TIBEMS_TIMEOUT                     = 50,
     TIBEMS_INTR                        = 51,
     TIBEMS_DESTINATION_LIMIT_EXCEEDED  = 52,
     TIBEMS_MEM_LIMIT_EXCEEDED          = 53,
@@ -333,7 +362,8 @@ pub enum tibems_status{
     TIBEMS_EOF                         = 71,
     TIBEMS_INVALID_FILE                = 72,
     TIBEMS_FILE_NOT_FOUND              = 73,
-    TIBEMS_IO_FAILED                   = 74,
+  /// An operating system I/O call failed.
+  TIBEMS_IO_FAILED                   = 74,
 
     TIBEMS_NOT_FILE_OWNER              = 80,
 
@@ -357,9 +387,10 @@ pub enum tibems_status{
     TIBEMS_LDAP_ERROR                  = 120,
     TIBEMS_INVALID_PROXY_USER          = 121,
 
-    /* SSL related errors */
-    TIBEMS_INVALID_CERT                = 150,
-    TIBEMS_INVALID_CERT_NOT_YET        = 151,   
+  /// SSL detected an invalid X.509 certificate.
+  TIBEMS_INVALID_CERT                = 150,
+  /// SSL detected an X.509 certificate that is not yet valid; that is, the current date is before the first date for which the certificate becomes valid.
+  TIBEMS_INVALID_CERT_NOT_YET        = 151,   
     TIBEMS_INVALID_CERT_EXPIRED        = 152,
     TIBEMS_INVALID_CERT_DATA           = 153,
     TIBEMS_ALGORITHM_ERROR             = 154,
@@ -392,6 +423,6 @@ pub enum tibems_status{
     TIBEMS_NO_MEMORY_FOR_OBJECT        = 237,
 
     TIBEMS_UFO_CONNECTION_FAILURE      = 240,
-
-    TIBEMS_NOT_IMPLEMENTED             = 255
+  /// The function is not implemented.
+  TIBEMS_NOT_IMPLEMENTED             = 255
 }

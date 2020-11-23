@@ -5,24 +5,28 @@ use std::io::Error;
 
 pub mod c_binding;
 
+/// holds the native Connection pointer
 #[allow(dead_code)]
 #[derive(Debug,Copy,Clone)]
 pub struct Connection{
   pointer: usize
 }
 
+/// holds the native Session pointer
 #[allow(dead_code)]
 #[derive(Debug,Copy,Clone)]
 pub struct Session{
   pointer: usize
 }
 
+/// holds the native Consumer pointer
 #[allow(dead_code)]
 #[derive(Debug,Copy,Clone)]
 pub struct Consumer{
   pointer: usize
 }
 
+/// represents a Text Message which can be transformed into Message through From,Into trait.
 #[allow(dead_code)]
 #[derive(Debug,Clone)]
 pub struct TextMessage{
@@ -58,6 +62,7 @@ impl From<TextMessage> for Message {
   }
 }
 
+/// Destination, can either be Queue or Topic
 #[allow(dead_code)]
 #[derive(Debug,Clone)]
 pub struct Destination{
@@ -65,6 +70,7 @@ pub struct Destination{
   pub destination_name: String,
 }
 
+/// Type of the message
 #[allow(dead_code)]
 #[derive(Debug,Copy,Clone)]
 pub enum MessageType{
@@ -72,6 +78,7 @@ pub enum MessageType{
   BytesMessage,
 }
 
+/// Type of the destination
 #[allow(dead_code)]
 #[derive(Debug,Copy,Clone)]
 pub enum DestinationType{

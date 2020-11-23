@@ -103,53 +103,17 @@ pub fn connect(url: String, user: String, password: String) -> Result<Connection
   Ok(conn)
 }
 
-/// open a session
-pub fn session(connection: Connection)-> Result<Session,Error> {
-  let session: Session;
-  unsafe{
-    let mut session_pointer:usize = 0;
-    let status = c_binding::tibemsConnection_CreateSession(connection.pointer, &mut session_pointer, c_binding::tibems_bool::TIBEMS_FALSE, c_binding::tibemsAcknowledgeMode::TIBEMS_AUTO_ACKNOWLEDGE);
-    println!("tibemsConnection_CreateSession: {:?}",status);
-    session = Session{pointer: session_pointer};
-  }
-  Ok(session)
-}
-
-/// open a message consumer
-pub fn queue_consumer(session: Session, destination: Destination, selector: Option<String>)-> Result<Consumer,Error> {
-  let consumer: Consumer;
-  let mut destination_pointer:usize = 0;
-  unsafe{
-    //create destination
-    match destination.destination_type {
-      DestinationType::Queue => {
-        let status = c_binding::tibemsDestination_Create(&mut destination_pointer, c_binding::tibemsDestinationType::TIBEMS_QUEUE, CString::new(destination.destination_name).unwrap().as_ptr());
-        println!("tibemsDestination_Create: {:?}",status);
-      },
-      DestinationType::Topic => {
-        let status = c_binding::tibemsDestination_Create(&mut destination_pointer, c_binding::tibemsDestinationType::TIBEMS_TOPIC, CString::new(destination.destination_name).unwrap().as_ptr());
-        println!("tibemsDestination_Create: {:?}",status);
-      }
+impl Connection {
+  /// open a session
+  pub fn session(&self)-> Result<Session,Error> {
+    let session: Session;
+    unsafe{
+      let mut session_pointer:usize = 0;
+      let status = c_binding::tibemsConnection_CreateSession(self.pointer, &mut session_pointer, c_binding::tibems_bool::TIBEMS_FALSE, c_binding::tibemsAcknowledgeMode::TIBEMS_AUTO_ACKNOWLEDGE);
+      println!("tibemsConnection_CreateSession: {:?}",status);
+      session = Session{pointer: session_pointer};
     }
-    //open consumer
-    let mut consumer_pointer:usize = 0;
-    let selector_str;
-    match selector {
-      Some(val) => selector_str=CString::new(val).unwrap().as_ptr(),
-      _ => selector_str = std::ptr::null(),
-    }
-    let status = c_binding::tibemsSession_CreateConsumer(session.pointer, &mut consumer_pointer,destination_pointer, selector_str, c_binding::tibems_bool::TIBEMS_TRUE);
-    println!("tibemsSession_CreateConsumer: {:?}",status);
-    consumer = Consumer{pointer: consumer_pointer};
-  }
-  Ok(consumer)
-}
-
-/// close a session
-pub fn session_close(session: Session){
-  unsafe{
-    let status = c_binding::tibemsSession_Close(session.pointer);
-    println!("tibemsSession_Close: {:?}",status);
+    Ok(session)
   }
 }
 
@@ -199,38 +163,80 @@ pub fn receive_message(consumer: Consumer, wait_time_ms: Option<i64>) -> Result<
   }
   Ok(Some(msg))
 }
-/// sending a message to a destination (only queues are supported)
-pub fn send_message(session: Session, destination: Destination, message: Message) -> Result<(),Error>{
-  let mut dest:usize = 0;
-  unsafe{
-    match destination.destination_type {
-      DestinationType::Queue => {
-        let status = c_binding::tibemsDestination_Create(&mut dest, c_binding::tibemsDestinationType::TIBEMS_QUEUE, CString::new(destination.destination_name).unwrap().as_ptr());
-        println!("tibemsDestination_Create: {:?}",status);
-      },
-      DestinationType::Topic => {
-        let status = c_binding::tibemsDestination_Create(&mut dest, c_binding::tibemsDestinationType::TIBEMS_TOPIC, CString::new(destination.destination_name).unwrap().as_ptr());
-        println!("tibemsDestination_Create: {:?}",status);
+
+
+impl Session {
+  /// open a message consumer
+  pub fn queue_consumer(&self, destination: Destination, selector: Option<String>)-> Result<Consumer,Error> {
+    let consumer: Consumer;
+    let mut destination_pointer:usize = 0;
+    unsafe{
+      //create destination
+      match destination.destination_type {
+        DestinationType::Queue => {
+          let status = c_binding::tibemsDestination_Create(&mut destination_pointer, c_binding::tibemsDestinationType::TIBEMS_QUEUE, CString::new(destination.destination_name).unwrap().as_ptr());
+          println!("tibemsDestination_Create: {:?}",status);
+        },
+        DestinationType::Topic => {
+          let status = c_binding::tibemsDestination_Create(&mut destination_pointer, c_binding::tibemsDestinationType::TIBEMS_TOPIC, CString::new(destination.destination_name).unwrap().as_ptr());
+          println!("tibemsDestination_Create: {:?}",status);
+        }
       }
+      //open consumer
+      let mut consumer_pointer:usize = 0;
+      let selector_str;
+      match selector {
+        Some(val) => selector_str=CString::new(val).unwrap().as_ptr(),
+        _ => selector_str = std::ptr::null(),
+      }
+      let status = c_binding::tibemsSession_CreateConsumer(self.pointer, &mut consumer_pointer,destination_pointer, selector_str, c_binding::tibems_bool::TIBEMS_TRUE);
+      println!("tibemsSession_CreateConsumer: {:?}",status);
+      consumer = Consumer{pointer: consumer_pointer};
     }
-    let mut producer: usize = 0;
-    let status = c_binding::tibemsSession_CreateProducer(session.pointer,&mut producer,dest);
-    println!("tibemsSession_CreateProducer: {:?}",status);
-    let mut msg: usize = 0;
-    match message.message_type {
-      MessageType::TextMessage =>{
-        let status = c_binding::tibemsTextMsg_Create(&mut msg);
-        println!("tibemsTextMsg_Create: {:?}",status);    
-        let status = c_binding::tibemsTextMsg_SetText(msg,CString::new(message.body_text.unwrap()).unwrap().as_ptr());
-        println!("tibemsTextMsg_SetText: {:?}",status);
-      }
-      _ => {
-        let status = c_binding::tibemsTextMsg_Create(&mut msg);
-        println!("tibemsTextMsg_Create: {:?}",status);    
-      }
-    }
-    let status = c_binding::tibemsMsgProducer_Send(producer, msg);
-    println!("tibemsMsgProducer_Send: {:?}",status);
+    Ok(consumer)
   }
-  Ok(())
+
+  /// close a session
+  pub fn close(&self){
+    unsafe{
+      let status = c_binding::tibemsSession_Close(self.pointer);
+      println!("tibemsSession_Close: {:?}",status);
+    }
+  }
+
+  /// sending a message to a destination (only queues are supported)
+  pub fn send_message(&self, destination: Destination, message: Message) -> Result<(),Error>{
+    let mut dest:usize = 0;
+    unsafe{
+      match destination.destination_type {
+        DestinationType::Queue => {
+          let status = c_binding::tibemsDestination_Create(&mut dest, c_binding::tibemsDestinationType::TIBEMS_QUEUE, CString::new(destination.destination_name).unwrap().as_ptr());
+          println!("tibemsDestination_Create: {:?}",status);
+        },
+        DestinationType::Topic => {
+          let status = c_binding::tibemsDestination_Create(&mut dest, c_binding::tibemsDestinationType::TIBEMS_TOPIC, CString::new(destination.destination_name).unwrap().as_ptr());
+          println!("tibemsDestination_Create: {:?}",status);
+        }
+      }
+      let mut producer: usize = 0;
+      let status = c_binding::tibemsSession_CreateProducer(self.pointer,&mut producer,dest);
+      println!("tibemsSession_CreateProducer: {:?}",status);
+      let mut msg: usize = 0;
+      match message.message_type {
+        MessageType::TextMessage =>{
+          let status = c_binding::tibemsTextMsg_Create(&mut msg);
+          println!("tibemsTextMsg_Create: {:?}",status);    
+          let status = c_binding::tibemsTextMsg_SetText(msg,CString::new(message.body_text.unwrap()).unwrap().as_ptr());
+          println!("tibemsTextMsg_SetText: {:?}",status);
+        }
+        _ => {
+          let status = c_binding::tibemsTextMsg_Create(&mut msg);
+          println!("tibemsTextMsg_Create: {:?}",status);    
+        }
+      }
+      let status = c_binding::tibemsMsgProducer_Send(producer, msg);
+      println!("tibemsMsgProducer_Send: {:?}",status);
+    }
+    Ok(())
+  }
 }

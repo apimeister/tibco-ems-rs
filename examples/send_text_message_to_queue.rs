@@ -9,7 +9,7 @@ fn main() {
 
   let connection = tibco_ems::connect(url.to_string(),user.to_string(),password.to_string()).unwrap();
 
-  let session = tibco_ems::session(connection).unwrap();
+  let session = connection.session().unwrap();
 
   let msg = TextMessage{body:"hallo welt".to_string(),header: None};
 
@@ -17,7 +17,7 @@ fn main() {
     destination_type: DestinationType::Queue,
     destination_name: "myqueue".to_string(),
   };
-  let _ignore = tibco_ems::send_message(session, destination, msg.into());
+  let _ignore = session.send_message(destination, msg.into());
 
-  tibco_ems::session_close(session);
+  session.close();
 }

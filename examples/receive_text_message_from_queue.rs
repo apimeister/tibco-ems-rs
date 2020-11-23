@@ -10,13 +10,13 @@ fn main() {
 
   let connection = tibco_ems::connect(url.to_string(),user.to_string(),password.to_string()).unwrap();
 
-  let session = tibco_ems::session(connection).unwrap();
+  let session = connection.session().unwrap();
 
   let destination = Destination{
     destination_type: DestinationType::Queue,
     destination_name: "myqueue".to_string(),
   };
-  let consumer = tibco_ems::queue_consumer(session,destination,None).unwrap();
+  let consumer = session.queue_consumer(destination,None).unwrap();
   
   println!("waiting 10 seconds for a message");
   let msg_result = tibco_ems::receive_message(consumer, Some(10000));
@@ -45,5 +45,5 @@ fn main() {
       println!("returned status: {:?}",status);
     }
   }
-  tibco_ems::session_close(session);
+  session.close();
 }

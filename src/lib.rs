@@ -7,14 +7,14 @@ pub mod c_binding;
 
 /// holds the native Connection pointer
 #[allow(dead_code)]
-#[derive(Debug,Copy,Clone)]
+#[derive(Debug,Clone)]
 pub struct Connection{
   pointer: usize
 }
 
 /// holds the native Session pointer
 #[allow(dead_code)]
-#[derive(Debug,Copy,Clone)]
+#[derive(Debug,Clone)]
 pub struct Session{
   pointer: usize
 }
@@ -197,7 +197,7 @@ impl Session {
   }
 
   /// close a session
-  pub fn close(&self){
+  fn close(&self){
     unsafe{
       let status = c_binding::tibemsSession_Close(self.pointer);
       println!("tibemsSession_Close: {:?}",status);
@@ -236,7 +236,22 @@ impl Session {
       }
       let status = c_binding::tibemsMsgProducer_Send(producer, msg);
       println!("tibemsMsgProducer_Send: {:?}",status);
+      //destroy message
+      let status = c_binding::tibemsMsg_Destroy(msg);
+      println!("tibemsMsg_Destroy: {:?}",status);
+      //destroy producer
+      let status = c_binding::tibemsMsgProducer_Close(producer);
+      println!("tibemsMsgProducer_Close: {:?}",status);
+      //destroy destination
+      let status = c_binding::tibemsDestination_Destroy(dest);
+      println!("tibemsDestination_Destroy: {:?}",status);
     }
     Ok(())
+  }
+}
+
+impl Drop for Session {
+  fn drop(&mut self) {
+    self.close();
   }
 }

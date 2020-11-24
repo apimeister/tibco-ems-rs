@@ -40,18 +40,17 @@ fn main() {
   let password="admin";
 
   let connection = tibco_ems::connect(url.to_string(),user.to_string(),password.to_string()).unwrap();
+  {
+    let session = connection.session().unwrap();
 
-  let session = connection.session().unwrap();
+    let msg = TextMessage{body:"hallo welt".to_string(),header: None};
 
-  let msg = TextMessage{body:"hallo welt".to_string(),header: None};
-
-  let destination = Destination{
-    destination_type: DestinationType::Queue,
-    destination_name: "myqueue".to_string(),
-  };
-  let _ignore = session.send_message(destination, msg.into());
-
-  session.close();
+    let destination = Destination{
+      destination_type: DestinationType::Queue,
+      destination_name: "myqueue".to_string(),
+    };
+    let _ignore = session.send_message(destination, msg.into());
+  }
 }
 ```
 
@@ -69,43 +68,43 @@ fn main() {
   let password="admin";
 
   let connection = tibco_ems::connect(url.to_string(),user.to_string(),password.to_string()).unwrap();
+  {
+    let session = connection.session().unwrap();
 
-  let session = connection.session().unwrap();
+    let destination = Destination{
+      destination_type: DestinationType::Queue,
+      destination_name: "myqueue".to_string(),
+    };
+    let consumer = session.queue_consumer(destination,None).unwrap();
+    
+    println!("waiting 10 seconds for a message");
+    let msg_result = tibco_ems::receive_message(consumer, Some(10000));
 
-  let destination = Destination{
-    destination_type: DestinationType::Queue,
-    destination_name: "myqueue".to_string(),
-  };
-  let consumer = session.queue_consumer(destination,None).unwrap();
-  
-  println!("waiting 10 seconds for a message");
-  let msg_result = tibco_ems::receive_message(consumer, Some(10000));
-
-  match msg_result {
-    Ok(result_value) => {
-      match result_value {
-        Some(message) => {
-          match message.message_type {
-            MessageType::TextMessage =>{
-              println!("received text message");
-              let text_message = TextMessage::from(message);
-              println!("content: {}", text_message.body);
-            },
-            _ => {
-              println!("unknown type");
-            }
-          }    
-        },
-        None =>{
-          println!("no message returned");
-        },
+    match msg_result {
+      Ok(result_value) => {
+        match result_value {
+          Some(message) => {
+            match message.message_type {
+              MessageType::TextMessage =>{
+                println!("received text message");
+                let text_message = TextMessage::from(message);
+                println!("content: {}", text_message.body);
+              },
+              _ => {
+                println!("unknown type");
+              }
+            }    
+          },
+          None =>{
+            println!("no message returned");
+          },
+        }
+      },
+      Err(status) => {
+        println!("returned status: {:?}",status);
       }
-    },
-    Err(status) => {
-      println!("returned status: {:?}",status);
     }
   }
-  session.close();
 }
 ```
 

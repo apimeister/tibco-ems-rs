@@ -3,45 +3,36 @@ use std::os::raw::c_char;
 
 #[allow(dead_code)]
 extern "C" {
+  /// Create a new error context object.
   pub fn tibemsErrorContext_Create(
     errorContext: *mut c_void) -> tibems_status;
+  /// Retrieve any available detailed error string associated with the last EMS call.
   pub fn tibemsErrorContext_GetLastErrorString(
     errorContext: *mut c_void,
     str: *mut c_char) -> tibems_status;
+  /// Create a new SSL parameter object.
   pub fn tibemsSSLParams_Create() -> *mut c_void;
+  /// Destroy an SSL parameter object.
   pub fn tibemsSSLParams_Destroy(sslParams: *mut c_void);
+  /// Get the text string corresponding to a status code.
   pub fn tibemsStatus_GetText(status: tibems_status) -> *const c_char;
-  //admin API
+  /// Create an administration connection to a server.
   pub fn tibemsAdmin_Create(admin: *mut tibemsAdmin,
     url: *const c_char, userName: *const c_char,
     password: *const c_char, sslparams: *mut c_void) -> tibems_status;
+  /// Close the administrative connection to the server.
   pub fn tibemsAdmin_Close(admin: tibemsAdmin) -> tibems_status;
+  /// Get the current set of server metrics.
   pub fn tibemsAdmin_GetInfo(
     admin: tibemsAdmin,
     serverInfo: *mut usize) -> tibems_status;
-  pub fn tibemsServerInfo_GetQueueCount(
-    serverInfo: usize,
-    count: *mut usize) -> tibems_status;
-  pub fn tibemsDestinationInfo_Create(
-    destInfo: *mut usize,
-    destName: *const c_char,
-    destType: usize) -> tibems_status;
-  pub fn tibemsDestinationInfo_Destroy(
-    destInfo: usize) -> tibems_status;
+  /// Get information about a destination of the given name.
   pub fn tibemsAdmin_GetDestination(
     admin: tibemsAdmin,
     destInfo: *mut usize,
     destName: *const c_char,
     destType: usize) -> tibems_status;
-  pub fn tibemsDestinationInfo_GetPendingMessageCount(
-    destInfo: usize,
-    count: *mut i64 ) -> tibems_status;
-  pub fn tibemsDestinationInfo_GetConsumerCount(
-    destInfo: usize,
-    count: &mut usize) -> tibems_status;
-  pub fn tibemsDestinationInfo_GetOverflowPolicy(
-    destInfo: usize,
-    overflowPolicy: *mut usize) -> tibems_status;
+  /// Get the destinations that match the given pattern and the given permanence type.
   pub fn tibemsAdmin_GetDestinations(
     admin: tibemsAdmin,
     collection: *mut usize,
@@ -49,28 +40,60 @@ extern "C" {
     destType: tibemsDestinationType,
     permType: tibems_permType,
     statOnly: tibems_bool) ->tibems_status;
+  /// Get the command timeout.
   pub fn tibemsAdmin_GetCommandTimeout(
     admin: tibemsAdmin,
     timeout: *mut i64);
+  /// Set the command timeout.
   pub fn tibemsAdmin_SetCommandTimeout(
     admin: tibemsAdmin,
     timeout: i64) -> tibems_status;
-  pub fn tibemsCollection_GetFirst(
-    collection: usize,
-    collection_ptr: *mut usize) -> tibems_status;
-  pub fn tibemsCollection_GetNext(
-    collection: usize,
-    collection_ptr: *mut usize) -> tibems_status;
-  pub fn tibemsCollection_Destroy(
-    collection: usize) -> tibems_status;
+  /// Get the total number of queues in the server.
+  pub fn tibemsServerInfo_GetQueueCount(
+    serverInfo: usize,
+    count: *mut usize) -> tibems_status;
+  /// Create a tibemsDestinationInfo object.
+  pub fn tibemsDestinationInfo_Create(
+    destInfo: *mut usize,
+    destName: *const c_char,
+    destType: usize) -> tibems_status;
+  /// Destroy a tibemsDestinationInfo object.
+  pub fn tibemsDestinationInfo_Destroy(
+    destInfo: usize) -> tibems_status;
+  /// Get the total number of pending messages for this destination.
+  pub fn tibemsDestinationInfo_GetPendingMessageCount(
+    destInfo: usize,
+    count: *mut i64 ) -> tibems_status;
+  /// Get the number of active consumers on this destination.
+  pub fn tibemsDestinationInfo_GetConsumerCount(
+    destInfo: usize,
+    count: &mut usize) -> tibems_status;
+  /// Get the overflow policy for this destination.
+  pub fn tibemsDestinationInfo_GetOverflowPolicy(
+    destInfo: usize,
+    overflowPolicy: *mut usize) -> tibems_status;
+  /// Get the name of this destination.
   pub fn tibemsDestinationInfo_GetName(
     destInfo: usize,
     name: *const c_char,
     name_len: usize) -> tibems_status;
+  /// Get the first object in a collection.
+  pub fn tibemsCollection_GetFirst(
+    collection: usize,
+    collection_ptr: *mut usize) -> tibems_status;
+  /// Get the next object in a collection.
+  pub fn tibemsCollection_GetNext(
+    collection: usize,
+    collection_ptr: *mut usize) -> tibems_status;
+  /// Destroy a collection.
+  pub fn tibemsCollection_Destroy(
+    collection: usize) -> tibems_status;
+  /// Get the current number of subscriptions for this topic.
   pub fn tibemsTopicInfo_GetSubscriptionCount(
     topicInfo: usize,
     count: *mut i64) -> tibems_status;
-  pub fn tibemsTopicInfo_GetDurableCount(
+  /// Get the current number of durable subscriptions for this topic.
+  pub fn tibemsTopicInfo_GetDurableSubscriptionCount(
     topicInfo: usize,
     count: *mut i64) -> tibems_status;
   /// Create a connection factory.
@@ -111,6 +134,9 @@ extern "C" {
     destination: *mut usize,
     destType: tibemsDestinationType,
     name: *const c_char) -> tibems_status;
+  /// Destroy a destination object.
+  pub fn tibemsDestination_Destroy(
+    destination: usize) -> tibems_status;
   /// Create a message producer.
   pub fn tibemsSession_CreateProducer(
     session: usize,
@@ -124,9 +150,13 @@ extern "C" {
   pub fn tibemsSession_CreateMessage(
     session: usize,
     textMsg: *mut usize) -> tibems_status;
+  /// Send a message.
   pub fn tibemsMsgProducer_Send(
     msgProducer: usize,
     message: usize) -> tibems_status;
+  /// Destroy the producer object; reclaim resources.
+  pub fn tibemsMsgProducer_Close(
+    msgProducer: usize) -> tibems_status;
   pub fn tibemsQueue_Create(
     queue: *mut tibemsDestination,
     queueName: *const c_char) -> tibems_status;
@@ -145,6 +175,9 @@ extern "C" {
   pub fn tibemsTextMsg_SetText(
     message: usize,
     text: *const c_char) -> tibems_status;
+  /// Destroy a message.
+  pub fn tibemsMsg_Destroy(
+    message: usize) -> tibems_status;
   /// Set the value of a message property.
   pub fn tibemsMsg_SetStringProperty(
     message: usize, 
@@ -189,18 +222,6 @@ pub struct tibemsConnectionFactory { pub _val: [u8; 0] }
 
 #[allow(dead_code)]
 #[repr(C)]
-pub struct tibemsConnection { pub _val: [u8; 0] }
-
-#[allow(dead_code)]
-#[repr(C)]
-pub struct tibemsMsgProducer { pub _val: [u8; 0] }
-
-#[allow(dead_code)]
-#[repr(C)]
-pub struct tibemsSession { pub _val: usize }
-
-#[allow(dead_code)]
-#[repr(C)]
 pub struct tibemsDestination { pub _val: usize }
 
 #[allow(dead_code)]
@@ -222,14 +243,14 @@ pub struct tibemsLookupContext { pub _val: [u8; 0] }
 #[derive(Debug)]
 #[repr(C)]
 pub enum tibemsMsgType{
-    TIBEMS_MESSAGE_UNKNOWN                      = 0,
-    TIBEMS_MESSAGE                              = 1,
-    TIBEMS_BYTES_MESSAGE                        = 2,
-    TIBEMS_MAP_MESSAGE                          = 3,
-    TIBEMS_OBJECT_MESSAGE                       = 4,
-    TIBEMS_STREAM_MESSAGE                       = 5,
-    TIBEMS_TEXT_MESSAGE                         = 6,
-    TIBEMS_MESSAGE_UNDEFINED                    = 256
+  TIBEMS_MESSAGE_UNKNOWN                      = 0,
+  TIBEMS_MESSAGE                              = 1,
+  TIBEMS_BYTES_MESSAGE                        = 2,
+  TIBEMS_MAP_MESSAGE                          = 3,
+  TIBEMS_OBJECT_MESSAGE                       = 4,
+  TIBEMS_STREAM_MESSAGE                       = 5,
+  TIBEMS_TEXT_MESSAGE                         = 6,
+  TIBEMS_MESSAGE_UNDEFINED                    = 256
 }
 
 #[allow(dead_code)]
@@ -313,7 +334,7 @@ pub enum tibems_status{
     TIBEMS_NO_MEMORY                   = 19,
   /// The function received an illegal value as an argument.
   TIBEMS_INVALID_ARG                 = 20,
-  /// 	The server has exceeded the maximum number of licensed connections or hosts that it can service.
+  /// The server has exceeded the maximum number of licensed connections or hosts that it can service.
   TIBEMS_SERVER_LIMIT                = 21,
 
     TIBEMS_MSG_DUPLICATE               = 22,

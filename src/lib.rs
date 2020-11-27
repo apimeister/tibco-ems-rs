@@ -1,8 +1,11 @@
+//! Tibco EMS binding.
+
 use std::ffi::CString;
 use std::ffi::CStr;
 use std::collections::HashMap;
 use std::io::Error;
 
+/// native C library bindings
 pub mod c_binding;
 
 /// holds the native Connection pointer
@@ -30,17 +33,24 @@ pub struct Consumer{
 #[allow(dead_code)]
 #[derive(Debug,Clone)]
 pub struct TextMessage{
+  /// message body
   pub body: String,
-  pub header: Option<HashMap<String,String>>
+  /// message header
+  pub header: Option<HashMap<String,String>>,
 }
 
 /// represents a generic Message which can be transformed into TextMessage through From,Into trait.
 #[allow(dead_code)]
 #[derive(Debug,Clone)]
 pub struct Message{
+  /// type of the message, currenlty on TextMessage is supported
   pub message_type: MessageType,
+  /// message body if type is text
   body_text: Option<String>,
+  /// message body if type is binary
   body_binary: Option<Vec<u8>>,
+  // message header
+  header: Option<HashMap<String,String>>,
 }
 
 impl From<Message> for TextMessage {
@@ -58,6 +68,7 @@ impl From<TextMessage> for Message {
       message_type: MessageType::TextMessage,
       body_text: Some(msg.body),
       body_binary: None,
+      header: None,
     }
   }
 }
@@ -66,7 +77,9 @@ impl From<TextMessage> for Message {
 #[allow(dead_code)]
 #[derive(Debug,Clone)]
 pub struct Destination{
+  /// type of the destination, either queue or topic
   pub destination_type: DestinationType,
+  /// name of the destination
   pub destination_name: String,
 }
 
@@ -74,7 +87,9 @@ pub struct Destination{
 #[allow(dead_code)]
 #[derive(Debug,Copy,Clone)]
 pub enum MessageType{
+  /// message body of type text
   TextMessage,
+  /// message body of type binary
   BytesMessage,
 }
 
@@ -82,7 +97,9 @@ pub enum MessageType{
 #[allow(dead_code)]
 #[derive(Debug,Copy,Clone)]
 pub enum DestinationType{
+  /// destination type queue
   Queue,
+  /// destination type topic
   Topic
 }
 
@@ -123,6 +140,7 @@ pub fn receive_message(consumer: Consumer, wait_time_ms: Option<i64>) -> Result<
     message_type: MessageType::TextMessage,
     body_text: None,
     body_binary: None,
+    header: None,
   };
   unsafe{
     let mut msg_pointer:usize = 0;
@@ -144,15 +162,23 @@ pub fn receive_message(consumer: Consumer, wait_time_ms: Option<i64>) -> Result<
     println!("tibemsMsg_GetBodyType: {:?}",status);
     match msg_type {
       c_binding::tibemsMsgType::TIBEMS_TEXT_MESSAGE => {
+        let mut header: HashMap<String,String> = HashMap::new();
         let buf_vec:Vec<i8> = vec![0; 0];
         let buf_ref: *const std::os::raw::c_char = buf_vec.as_ptr();
         let status = c_binding::tibemsTextMsg_GetText(msg_pointer, & buf_ref);
         println!("tibemsTextMsg_GetText: {:?}",status);
         let content = CStr::from_ptr(buf_ref).to_str().unwrap();
+        let status = c_binding::tibemsMsg_GetMessageID(msg_pointer, &buf_ref);
+        println!("tibemsMsg_GetMessageID: {:?}",status);
+        let message_id = CStr::from_ptr(buf_ref).to_str().unwrap();
+        header.insert("MessageId".to_string(),message_id.to_string());
+        let status = c_binding::tibemsMsg_Destroy(msg_pointer);
+        println!("tibemsMsg_Destroy: {:?}",status);
         msg = Message{
           message_type: MessageType::TextMessage,
           body_text: Some(content.to_string()),
           body_binary: None,
+          header: Some(header),
         };
       },
       _ => {

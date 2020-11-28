@@ -26,50 +26,6 @@ pub struct Consumer{
   pointer: usize
 }
 
-/// represents a Text Message which can be transformed into Message through From,Into trait.
-#[allow(dead_code)]
-#[derive(Debug,Clone)]
-pub struct TextMessage{
-  /// message body
-  pub body: String,
-  /// message header
-  pub header: Option<HashMap<String,String>>,
-}
-
-/// represents a generic Message which can be transformed into TextMessage through From,Into trait.
-#[allow(dead_code)]
-#[derive(Debug,Clone)]
-pub struct Message{
-  /// type of the message, currenlty on TextMessage is supported
-  pub message_type: MessageType,
-  /// message body if type is text
-  body_text: Option<String>,
-  /// message body if type is binary
-  body_binary: Option<Vec<u8>>,
-  // message header
-  header: Option<HashMap<String,String>>,
-}
-
-impl From<Message> for TextMessage {
-  fn from(msg: Message) -> Self {
-    TextMessage{
-      body: msg.body_text.unwrap(),
-      header: None,
-    }
-  }
-}
-
-impl From<TextMessage> for Message {
-  fn from(msg: TextMessage) -> Self {
-    Message{
-      message_type: MessageType::TextMessage,
-      body_text: Some(msg.body),
-      body_binary: None,
-      header: None,
-    }
-  }
-}
-
 /// Destination, can either be Queue or Topic
 #[allow(dead_code)]
 #[derive(Debug,Clone)]
@@ -117,6 +73,10 @@ pub fn connect(url: String, user: String, password: String) -> Result<Connection
   Ok(conn)
 }
 
+//
+// connection
+//
+
 impl Connection {
   /// open a session
   pub fn session(&self)-> Result<Session,Error> {
@@ -131,62 +91,70 @@ impl Connection {
   }
 }
 
-/// receive messages from a consumer
-pub fn receive_message(consumer: Consumer, wait_time_ms: Option<i64>) -> Result<Option<Message>,Error> {
-  let mut msg:Message = Message{
-    message_type: MessageType::TextMessage,
-    body_text: None,
-    body_binary: None,
-    header: None,
-  };
-  unsafe{
-    let mut msg_pointer:usize = 0;
-    match wait_time_ms {
-      Some(time_ms) => {
-        let status = tibco_ems_sys::tibemsMsgConsumer_ReceiveTimeout(consumer.pointer, &mut msg_pointer, time_ms);
-        println!("tibemsMsgConsumer_Receive: {:?}",status);
-        if status == tibco_ems_sys::tibems_status::TIBEMS_TIMEOUT {
-          return Ok(None)
+//
+// consumer
+//
+
+impl Consumer {
+  /// receive messages from a consumer
+  /// 
+  /// function return after wait time with a Message or None
+  /// a wait time of None blocks until a message is available
+  pub fn receive_message(&self, wait_time_ms: Option<i64>) -> Result<Option<Message>,Error> {
+    let mut msg:Message = Message{
+      message_type: MessageType::TextMessage,
+      body_text: None,
+      body_binary: None,
+      header: None,
+      message_pointer: None,
+    };
+    unsafe{
+      let mut msg_pointer:usize = 0;
+      match wait_time_ms {
+        Some(time_ms) => {
+          let status = tibco_ems_sys::tibemsMsgConsumer_ReceiveTimeout(self.pointer, &mut msg_pointer, time_ms);
+          println!("tibemsMsgConsumer_Receive: {:?}",status);
+          if status == tibco_ems_sys::tibems_status::TIBEMS_TIMEOUT {
+            return Ok(None)
+          }
+        },
+        None => {
+          let status = tibco_ems_sys::tibemsMsgConsumer_Receive(self.pointer, &mut msg_pointer);
+          println!("tibemsMsgConsumer_Receive: {:?}",status);    
+        },
+      }
+      let mut msg_type: tibco_ems_sys::tibemsMsgType = tibco_ems_sys::tibemsMsgType::TIBEMS_TEXT_MESSAGE;
+      let status = tibco_ems_sys::tibemsMsg_GetBodyType(msg_pointer, &mut msg_type);
+      println!("tibemsMsg_GetBodyType: {:?}",status);
+      match msg_type {
+        tibco_ems_sys::tibemsMsgType::TIBEMS_TEXT_MESSAGE => {
+          let mut header: HashMap<String,String> = HashMap::new();
+          let buf_vec:Vec<i8> = vec![0; 0];
+          let buf_ref: *const std::os::raw::c_char = buf_vec.as_ptr();
+          let status = tibco_ems_sys::tibemsTextMsg_GetText(msg_pointer, & buf_ref);
+          println!("tibemsTextMsg_GetText: {:?}",status);
+          let content = CStr::from_ptr(buf_ref).to_str().unwrap();
+          let status = tibco_ems_sys::tibemsMsg_GetMessageID(msg_pointer, &buf_ref);
+          println!("tibemsMsg_GetMessageID: {:?}",status);
+          let message_id = CStr::from_ptr(buf_ref).to_str().unwrap();
+          header.insert("MessageId".to_string(),message_id.to_string());
+          msg = Message{
+            message_type: MessageType::TextMessage,
+            body_text: Some(content.to_string()),
+            body_binary: None,
+            header: Some(header),
+            message_pointer: Some(msg_pointer),
+          };
+        },
+        _ => {
+          //unknown
+          println!("BodyType: {:?}",msg_type);
         }
-      },
-      None => {
-        let status = tibco_ems_sys::tibemsMsgConsumer_Receive(consumer.pointer, &mut msg_pointer);
-        println!("tibemsMsgConsumer_Receive: {:?}",status);    
-      },
-    }
-    let mut msg_type: tibco_ems_sys::tibemsMsgType = tibco_ems_sys::tibemsMsgType::TIBEMS_TEXT_MESSAGE;
-    let status = tibco_ems_sys::tibemsMsg_GetBodyType(msg_pointer, &mut msg_type);
-    println!("tibemsMsg_GetBodyType: {:?}",status);
-    match msg_type {
-      tibco_ems_sys::tibemsMsgType::TIBEMS_TEXT_MESSAGE => {
-        let mut header: HashMap<String,String> = HashMap::new();
-        let buf_vec:Vec<i8> = vec![0; 0];
-        let buf_ref: *const std::os::raw::c_char = buf_vec.as_ptr();
-        let status = tibco_ems_sys::tibemsTextMsg_GetText(msg_pointer, & buf_ref);
-        println!("tibemsTextMsg_GetText: {:?}",status);
-        let content = CStr::from_ptr(buf_ref).to_str().unwrap();
-        let status = tibco_ems_sys::tibemsMsg_GetMessageID(msg_pointer, &buf_ref);
-        println!("tibemsMsg_GetMessageID: {:?}",status);
-        let message_id = CStr::from_ptr(buf_ref).to_str().unwrap();
-        header.insert("MessageId".to_string(),message_id.to_string());
-        let status = tibco_ems_sys::tibemsMsg_Destroy(msg_pointer);
-        println!("tibemsMsg_Destroy: {:?}",status);
-        msg = Message{
-          message_type: MessageType::TextMessage,
-          body_text: Some(content.to_string()),
-          body_binary: None,
-          header: Some(header),
-        };
-      },
-      _ => {
-        //unknown
-        println!("BodyType: {:?}",msg_type);
       }
     }
+    Ok(Some(msg))
   }
-  Ok(Some(msg))
 }
-
 
 impl Session {
   /// open a message consumer
@@ -248,14 +216,26 @@ impl Session {
       match message.message_type {
         MessageType::TextMessage =>{
           let status = tibco_ems_sys::tibemsTextMsg_Create(&mut msg);
-          println!("tibemsTextMsg_Create: {:?}",status);    
-          let status = tibco_ems_sys::tibemsTextMsg_SetText(msg,CString::new(message.body_text.unwrap()).unwrap().as_ptr());
+          println!("tibemsTextMsg_Create: {:?}",status);
+          let status = tibco_ems_sys::tibemsTextMsg_SetText(msg,CString::new(message.body_text.clone().unwrap()).unwrap().as_ptr());
           println!("tibemsTextMsg_SetText: {:?}",status);
-        }
-        _ => {
-          let status = tibco_ems_sys::tibemsTextMsg_Create(&mut msg);
-          println!("tibemsTextMsg_Create: {:?}",status);    
-        }
+        },
+        MessageType::BytesMessage =>{
+          let status = tibco_ems_sys::tibemsBytesMsg_Create(&mut msg);
+          println!("tibemsBytesMsg_Create: {:?}",status);
+        },
+      }
+      //set header
+      match message.header.clone() {
+        Some(headers)=>{
+          for (key, val) in &headers {
+            let status = tibco_ems_sys::tibemsMsg_SetStringProperty(msg, 
+              CString::new(key.to_string()).unwrap().as_ptr(), 
+              CString::new(val.to_string()).unwrap().as_ptr());
+            println!("tibemsMsg_SetStringProperty: {:?}",status);
+          }
+        },
+        None => {},
       }
       let status = tibco_ems_sys::tibemsMsgProducer_Send(producer, msg);
       println!("tibemsMsgProducer_Send: {:?}",status);
@@ -276,5 +256,108 @@ impl Session {
 impl Drop for Session {
   fn drop(&mut self) {
     self.close();
+  }
+}
+
+//
+// messages
+//
+
+/// represents a Text Message which can be transformed into Message through From,Into trait.
+#[allow(dead_code)]
+#[derive(Debug,Clone)]
+pub struct TextMessage{
+  /// message body
+  pub body: String,
+  /// message header
+  pub header: Option<HashMap<String,String>>,
+}
+
+impl From<Message> for TextMessage {
+  fn from(msg: Message) -> Self {
+    TextMessage{
+      body: msg.body_text.clone().unwrap(),
+      header: msg.header.clone(),
+    }
+  }
+}
+
+/// represents a Bytes Message which can be transformed into Message through From,Into trait.
+#[allow(dead_code)]
+#[derive(Debug,Clone)]
+pub struct BytesMessage{
+  /// message body
+  pub body: Vec<u8>,
+  /// message header
+  pub header: Option<HashMap<String,String>>,
+}
+
+impl From<Message> for BytesMessage {
+  fn from(msg: Message) -> Self {
+    BytesMessage{
+      body: msg.body_binary.clone().unwrap(),
+      header: msg.header.clone(),
+    }
+  }
+}
+
+/// represents a generic Message which can be transformed into a TextMessage or BytesMessage through From,Into trait.
+#[allow(dead_code)]
+#[derive(Debug,Clone)]
+pub struct Message{
+  /// type of the message, currenlty on TextMessage is supported
+  pub message_type: MessageType,
+  /// message body if type is text
+  body_text: Option<String>,
+  /// message body if type is binary
+  body_binary: Option<Vec<u8>>,
+  // message header
+  header: Option<HashMap<String,String>>,
+  message_pointer: Option<usize>,
+}
+
+impl From<TextMessage> for Message {
+  fn from(msg: TextMessage) -> Self {
+    Message{
+      message_type: MessageType::TextMessage,
+      body_text: Some(msg.body.clone()),
+      body_binary: None,
+      header: msg.header.clone(),
+      message_pointer: None,
+    }
+  }
+}
+
+impl From<BytesMessage> for Message {
+  fn from(msg: BytesMessage) -> Self {
+    Message{
+      message_type: MessageType::BytesMessage,
+      body_text: None,
+      body_binary: Some(msg.body.clone()),
+      header: msg.header.clone(),
+      message_pointer: None,
+    }
+  }
+}
+
+impl Message{
+  fn destroy(&self){
+    println!("destroying message");
+    match self.message_pointer{
+      Some(pointer) => {
+        unsafe{
+          let status = tibco_ems_sys::tibemsMsg_Destroy(pointer);
+          println!("tibemsMsg_Destroy: {:?}",status);
+        }
+      },
+      None => {}
+    }
+  }
+}
+
+impl Drop for Message {
+  fn drop(&mut self) {
+    println!("destroying message");
+    self.destroy();
   }
 }

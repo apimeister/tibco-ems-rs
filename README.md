@@ -1,10 +1,7 @@
 # tibco_ems
 [![Latest Version](https://img.shields.io/crates/v/tibco_ems.svg)](https://crates.io/crates/tibco_ems)
 
-Rust bindings for the Tibco EMS C library.
-
-A high-level API is provided to simplify the interaction. 
-Since the high-level API does not fully cover the EMS capabilities, a low-level binding is provided by the sub-module tibco_ems::c_binding.
+A high-level API for the Tibco EMS C library. 
 
 
 # License

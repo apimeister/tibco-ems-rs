@@ -1,11 +1,12 @@
 [package]
 name = "tibco_ems"
-version = "0.1.10"
+version = "0.1.11"
 authors = ["Jens Walter <jens@apimeister.com>"]
 edition = "2018"
 license = "Apache-2.0"
 keywords = ["tibco","ems"]
 repository = "https://github.com/apimeister/tibco-ems-rs/"
-description = "Rust bindings for the Tibco EMS C library."
+description = "A high level API for the Tibco EMS."
 
 [dependencies]
+tibco_ems-sys = "0.1"

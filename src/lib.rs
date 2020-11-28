@@ -5,9 +5,6 @@ use std::ffi::CStr;
 use std::collections::HashMap;
 use std::io::Error;
 
-/// native C library bindings
-pub mod c_binding;
-
 /// holds the native Connection pointer
 #[allow(dead_code)]
 #[derive(Debug,Clone)]
@@ -108,13 +105,13 @@ pub fn connect(url: String, user: String, password: String) -> Result<Connection
   let conn: Connection;
   let mut connection_pointer: usize = 0;
   unsafe{
-    let factory = c_binding::tibemsConnectionFactory_Create();
-    let status = c_binding::tibemsConnectionFactory_SetServerURL(factory, CString::new(url).unwrap().as_ptr());
+    let factory = tibco_ems_sys::tibemsConnectionFactory_Create();
+    let status = tibco_ems_sys::tibemsConnectionFactory_SetServerURL(factory, CString::new(url).unwrap().as_ptr());
     println!("tibemsConnectionFactory_SetServerURL: {:?}",status);
-    let status = c_binding::tibemsConnectionFactory_CreateConnection(factory,&mut connection_pointer,CString::new(user).unwrap().as_ptr(),CString::new(password).unwrap().as_ptr());
+    let status = tibco_ems_sys::tibemsConnectionFactory_CreateConnection(factory,&mut connection_pointer,CString::new(user).unwrap().as_ptr(),CString::new(password).unwrap().as_ptr());
     println!("tibemsConnectionFactory_CreateConnection: {:?}",status);
     conn = Connection{pointer: connection_pointer};
-    let status = c_binding::tibemsConnection_Start(connection_pointer);
+    let status = tibco_ems_sys::tibemsConnection_Start(connection_pointer);
     println!("tibemsConnectionFactory_CreateConnection: {:?}",status);
   }
   Ok(conn)
@@ -126,7 +123,7 @@ impl Connection {
     let session: Session;
     unsafe{
       let mut session_pointer:usize = 0;
-      let status = c_binding::tibemsConnection_CreateSession(self.pointer, &mut session_pointer, c_binding::tibems_bool::TIBEMS_FALSE, c_binding::tibemsAcknowledgeMode::TIBEMS_AUTO_ACKNOWLEDGE);
+      let status = tibco_ems_sys::tibemsConnection_CreateSession(self.pointer, &mut session_pointer, tibco_ems_sys::tibems_bool::TIBEMS_FALSE, tibco_ems_sys::tibemsAcknowledgeMode::TIBEMS_AUTO_ACKNOWLEDGE);
       println!("tibemsConnection_CreateSession: {:?}",status);
       session = Session{pointer: session_pointer};
     }
@@ -146,33 +143,33 @@ pub fn receive_message(consumer: Consumer, wait_time_ms: Option<i64>) -> Result<
     let mut msg_pointer:usize = 0;
     match wait_time_ms {
       Some(time_ms) => {
-        let status = c_binding::tibemsMsgConsumer_ReceiveTimeout(consumer.pointer, &mut msg_pointer, time_ms);
+        let status = tibco_ems_sys::tibemsMsgConsumer_ReceiveTimeout(consumer.pointer, &mut msg_pointer, time_ms);
         println!("tibemsMsgConsumer_Receive: {:?}",status);
-        if status == c_binding::tibems_status::TIBEMS_TIMEOUT {
+        if status == tibco_ems_sys::tibems_status::TIBEMS_TIMEOUT {
           return Ok(None)
         }
       },
       None => {
-        let status = c_binding::tibemsMsgConsumer_Receive(consumer.pointer, &mut msg_pointer);
+        let status = tibco_ems_sys::tibemsMsgConsumer_Receive(consumer.pointer, &mut msg_pointer);
         println!("tibemsMsgConsumer_Receive: {:?}",status);    
       },
     }
-    let mut msg_type: c_binding::tibemsMsgType = c_binding::tibemsMsgType::TIBEMS_TEXT_MESSAGE;
-    let status = c_binding::tibemsMsg_GetBodyType(msg_pointer, &mut msg_type);
+    let mut msg_type: tibco_ems_sys::tibemsMsgType = tibco_ems_sys::tibemsMsgType::TIBEMS_TEXT_MESSAGE;
+    let status = tibco_ems_sys::tibemsMsg_GetBodyType(msg_pointer, &mut msg_type);
     println!("tibemsMsg_GetBodyType: {:?}",status);
     match msg_type {
-      c_binding::tibemsMsgType::TIBEMS_TEXT_MESSAGE => {
+      tibco_ems_sys::tibemsMsgType::TIBEMS_TEXT_MESSAGE => {
         let mut header: HashMap<String,String> = HashMap::new();
         let buf_vec:Vec<i8> = vec![0; 0];
         let buf_ref: *const std::os::raw::c_char = buf_vec.as_ptr();
-        let status = c_binding::tibemsTextMsg_GetText(msg_pointer, & buf_ref);
+        let status = tibco_ems_sys::tibemsTextMsg_GetText(msg_pointer, & buf_ref);
         println!("tibemsTextMsg_GetText: {:?}",status);
         let content = CStr::from_ptr(buf_ref).to_str().unwrap();
-        let status = c_binding::tibemsMsg_GetMessageID(msg_pointer, &buf_ref);
+        let status = tibco_ems_sys::tibemsMsg_GetMessageID(msg_pointer, &buf_ref);
         println!("tibemsMsg_GetMessageID: {:?}",status);
         let message_id = CStr::from_ptr(buf_ref).to_str().unwrap();
         header.insert("MessageId".to_string(),message_id.to_string());
-        let status = c_binding::tibemsMsg_Destroy(msg_pointer);
+        let status = tibco_ems_sys::tibemsMsg_Destroy(msg_pointer);
         println!("tibemsMsg_Destroy: {:?}",status);
         msg = Message{
           message_type: MessageType::TextMessage,
@@ -200,11 +197,11 @@ impl Session {
       //create destination
       match destination.destination_type {
         DestinationType::Queue => {
-          let status = c_binding::tibemsDestination_Create(&mut destination_pointer, c_binding::tibemsDestinationType::TIBEMS_QUEUE, CString::new(destination.destination_name).unwrap().as_ptr());
+          let status = tibco_ems_sys::tibemsDestination_Create(&mut destination_pointer, tibco_ems_sys::tibemsDestinationType::TIBEMS_QUEUE, CString::new(destination.destination_name).unwrap().as_ptr());
           println!("tibemsDestination_Create: {:?}",status);
         },
         DestinationType::Topic => {
-          let status = c_binding::tibemsDestination_Create(&mut destination_pointer, c_binding::tibemsDestinationType::TIBEMS_TOPIC, CString::new(destination.destination_name).unwrap().as_ptr());
+          let status = tibco_ems_sys::tibemsDestination_Create(&mut destination_pointer, tibco_ems_sys::tibemsDestinationType::TIBEMS_TOPIC, CString::new(destination.destination_name).unwrap().as_ptr());
           println!("tibemsDestination_Create: {:?}",status);
         }
       }
@@ -215,7 +212,7 @@ impl Session {
         Some(val) => selector_str=CString::new(val).unwrap().as_ptr(),
         _ => selector_str = std::ptr::null(),
       }
-      let status = c_binding::tibemsSession_CreateConsumer(self.pointer, &mut consumer_pointer,destination_pointer, selector_str, c_binding::tibems_bool::TIBEMS_TRUE);
+      let status = tibco_ems_sys::tibemsSession_CreateConsumer(self.pointer, &mut consumer_pointer,destination_pointer, selector_str, tibco_ems_sys::tibems_bool::TIBEMS_TRUE);
       println!("tibemsSession_CreateConsumer: {:?}",status);
       consumer = Consumer{pointer: consumer_pointer};
     }
@@ -225,7 +222,7 @@ impl Session {
   /// close a session
   fn close(&self){
     unsafe{
-      let status = c_binding::tibemsSession_Close(self.pointer);
+      let status = tibco_ems_sys::tibemsSession_Close(self.pointer);
       println!("tibemsSession_Close: {:?}",status);
     }
   }
@@ -236,40 +233,40 @@ impl Session {
     unsafe{
       match destination.destination_type {
         DestinationType::Queue => {
-          let status = c_binding::tibemsDestination_Create(&mut dest, c_binding::tibemsDestinationType::TIBEMS_QUEUE, CString::new(destination.destination_name).unwrap().as_ptr());
+          let status = tibco_ems_sys::tibemsDestination_Create(&mut dest, tibco_ems_sys::tibemsDestinationType::TIBEMS_QUEUE, CString::new(destination.destination_name).unwrap().as_ptr());
           println!("tibemsDestination_Create: {:?}",status);
         },
         DestinationType::Topic => {
-          let status = c_binding::tibemsDestination_Create(&mut dest, c_binding::tibemsDestinationType::TIBEMS_TOPIC, CString::new(destination.destination_name).unwrap().as_ptr());
+          let status = tibco_ems_sys::tibemsDestination_Create(&mut dest, tibco_ems_sys::tibemsDestinationType::TIBEMS_TOPIC, CString::new(destination.destination_name).unwrap().as_ptr());
           println!("tibemsDestination_Create: {:?}",status);
         }
       }
       let mut producer: usize = 0;
-      let status = c_binding::tibemsSession_CreateProducer(self.pointer,&mut producer,dest);
+      let status = tibco_ems_sys::tibemsSession_CreateProducer(self.pointer,&mut producer,dest);
       println!("tibemsSession_CreateProducer: {:?}",status);
       let mut msg: usize = 0;
       match message.message_type {
         MessageType::TextMessage =>{
-          let status = c_binding::tibemsTextMsg_Create(&mut msg);
+          let status = tibco_ems_sys::tibemsTextMsg_Create(&mut msg);
           println!("tibemsTextMsg_Create: {:?}",status);    
-          let status = c_binding::tibemsTextMsg_SetText(msg,CString::new(message.body_text.unwrap()).unwrap().as_ptr());
+          let status = tibco_ems_sys::tibemsTextMsg_SetText(msg,CString::new(message.body_text.unwrap()).unwrap().as_ptr());
           println!("tibemsTextMsg_SetText: {:?}",status);
         }
         _ => {
-          let status = c_binding::tibemsTextMsg_Create(&mut msg);
+          let status = tibco_ems_sys::tibemsTextMsg_Create(&mut msg);
           println!("tibemsTextMsg_Create: {:?}",status);    
         }
       }
-      let status = c_binding::tibemsMsgProducer_Send(producer, msg);
+      let status = tibco_ems_sys::tibemsMsgProducer_Send(producer, msg);
       println!("tibemsMsgProducer_Send: {:?}",status);
       //destroy message
-      let status = c_binding::tibemsMsg_Destroy(msg);
+      let status = tibco_ems_sys::tibemsMsg_Destroy(msg);
       println!("tibemsMsg_Destroy: {:?}",status);
       //destroy producer
-      let status = c_binding::tibemsMsgProducer_Close(producer);
+      let status = tibco_ems_sys::tibemsMsgProducer_Close(producer);
       println!("tibemsMsgProducer_Close: {:?}",status);
       //destroy destination
-      let status = c_binding::tibemsDestination_Destroy(dest);
+      let status = tibco_ems_sys::tibemsDestination_Destroy(dest);
       println!("tibemsDestination_Destroy: {:?}",status);
     }
     Ok(())

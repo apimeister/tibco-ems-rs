@@ -75,7 +75,7 @@ fn main() {
     let consumer = session.queue_consumer(destination,None).unwrap();
     
     println!("waiting 10 seconds for a message");
-    let msg_result = tibco_ems::receive_message(consumer, Some(10000));
+    let msg_result = consumer.receive_message(Some(10000));
 
     match msg_result {
       Ok(result_value) => {

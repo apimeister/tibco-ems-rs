@@ -137,7 +137,7 @@ impl Consumer {
           let status = tibco_ems_sys::tibemsMsg_GetMessageID(msg_pointer, &buf_ref);
           println!("tibemsMsg_GetMessageID: {:?}",status);
           let message_id = CStr::from_ptr(buf_ref).to_str().unwrap();
-          header.insert("MessageId".to_string(),message_id.to_string());
+          header.insert("MessageID".to_string(),message_id.to_string());
           msg = Message{
             message_type: MessageType::TextMessage,
             body_text: Some(content.to_string()),
@@ -151,6 +151,34 @@ impl Consumer {
           println!("BodyType: {:?}",msg_type);
         }
       }
+      // fetch header
+      let mut header_enumeration: usize = 0;
+      let status = tibco_ems_sys::tibemsMsg_GetPropertyNames(msg_pointer, &mut header_enumeration);
+      println!("tibemsMsg_GetPropertyNames: {:?}",status);
+      loop {
+        let buf_vec:Vec<i8> = vec![0; 0];
+        let buf_ref: *const std::os::raw::c_char = buf_vec.as_ptr();
+        let status = tibco_ems_sys::tibemsMsgEnum_GetNextName(header_enumeration, &buf_ref);
+        match status {
+          tibco_ems_sys::tibems_status::TIBEMS_OK =>{
+            let header_name = CStr::from_ptr(buf_ref).to_str().unwrap();
+            let val_buf_vec:Vec<i8> = vec![0; 0];
+            let val_buf_ref: *const std::os::raw::c_char = val_buf_vec.as_ptr();
+            let status = tibco_ems_sys::tibemsMsg_GetStringProperty(msg_pointer, buf_ref, &val_buf_ref);
+            println!("tibemsMsg_GetStringProperty: {:?}",status);
+            let header_value = CStr::from_ptr(val_buf_ref).to_str().unwrap();
+            let mut header = msg.header.clone().unwrap();
+            header.insert(header_name.to_string(),header_value.to_string());
+            msg.header=Some(header);
+          }
+          _ => {
+            println!("tibemsMsgEnum_GetNextName: {:?}",status);
+            break;
+          }
+        }
+      }
+      let status = tibco_ems_sys::tibemsMsgEnum_Destroy(header_enumeration);
+      println!("tibemsMsgEnum_Destroy: {:?}",status);
     }
     Ok(Some(msg))
   }
@@ -342,7 +370,6 @@ impl From<BytesMessage> for Message {
 
 impl Message{
   fn destroy(&self){
-    println!("destroying message");
     match self.message_pointer{
       Some(pointer) => {
         unsafe{
@@ -357,7 +384,6 @@ impl Message{
 
 impl Drop for Message {
   fn drop(&mut self) {
-    println!("destroying message");
     self.destroy();
   }
 }

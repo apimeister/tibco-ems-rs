@@ -107,6 +107,7 @@ impl Consumer {
       body_binary: None,
       header: None,
       message_pointer: None,
+      reply_to: None,
     };
     unsafe{
       let mut msg_pointer:usize = 0;
@@ -144,6 +145,7 @@ impl Consumer {
             body_binary: None,
             header: Some(header),
             message_pointer: Some(msg_pointer),
+            reply_to: None,
           };
         },
         _ => {
@@ -179,10 +181,48 @@ impl Consumer {
       }
       let status = tibco_ems_sys::tibemsMsgEnum_Destroy(header_enumeration);
       println!("tibemsMsgEnum_Destroy: {:?}",status);
+      // look for replyTo header
+      let mut reply_destination: usize = 0;
+      let status = tibco_ems_sys::tibemsMsg_GetReplyTo(msg_pointer, &mut reply_destination);
+      println!("tibemsMsgEnum_Destroy: {:?}",status);
+      if reply_destination != 0 {
+        //has a destination
+        let mut destination_type = tibco_ems_sys::tibemsDestinationType::TIBEMS_UNKNOWN;
+        let status = tibco_ems_sys::tibemsDestination_GetType(reply_destination, &mut destination_type);
+        println!("tibemsDestination_GetType: {:?}",status);
+        let buf_size = 1024;
+        let buf_vec:Vec<i8> = vec![0; buf_size];
+        let buf_ref: *const std::os::raw::c_char = buf_vec.as_ptr();
+        let status = tibco_ems_sys::tibemsDestination_GetName(reply_destination, buf_ref, buf_size);
+        println!("tibemsDestination_GetName: {:?}",status);
+        let destination_name = CStr::from_ptr(buf_ref).to_str().unwrap();
+        match destination_type {
+          tibco_ems_sys::tibemsDestinationType::TIBEMS_QUEUE =>{
+            msg.reply_to = Some(Destination{
+              destination_type: DestinationType::Queue,
+              destination_name: destination_name.to_string(),
+            });
+          },
+          tibco_ems_sys::tibemsDestinationType::TIBEMS_TOPIC =>{
+            msg.reply_to = Some(Destination{
+              destination_type: DestinationType::Topic,
+              destination_name: destination_name.to_string(),
+            });
+          },
+          _ =>{
+            //ignore unknown type
+          }
+        }
+      }
+      println!("reply destination: {}",reply_destination);
     }
     Ok(Some(msg))
   }
 }
+
+// 
+// session
+//
 
 impl Session {
   /// open a message consumer
@@ -335,6 +375,8 @@ impl From<Message> for BytesMessage {
 pub struct Message{
   /// type of the message, currenlty on TextMessage is supported
   pub message_type: MessageType,
+  /// reply to header
+  pub reply_to: Option<Destination>,
   /// message body if type is text
   body_text: Option<String>,
   /// message body if type is binary
@@ -352,6 +394,7 @@ impl From<TextMessage> for Message {
       body_binary: None,
       header: msg.header.clone(),
       message_pointer: None,
+      reply_to: None,
     }
   }
 }
@@ -364,6 +407,7 @@ impl From<BytesMessage> for Message {
       body_binary: Some(msg.body.clone()),
       header: msg.header.clone(),
       message_pointer: None,
+      reply_to: None,
     }
   }
 }

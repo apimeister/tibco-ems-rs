@@ -1,6 +1,6 @@
 [package]
 name = "tibco_ems"
-version = "0.1.14"
+version = "0.1.15"
 authors = ["Jens Walter <jens@apimeister.com>"]
 edition = "2018"
 license = "Apache-2.0"
@@ -9,4 +9,6 @@ repository = "https://github.com/apimeister/tibco-ems-rs/"
 description = "A high level API for the Tibco EMS."
 
 [dependencies]
-tibco_ems-sys = "0.1.5"
+tibco_ems-sys = "0.1.6"
+log = "0.4"
+env_logger = "*"

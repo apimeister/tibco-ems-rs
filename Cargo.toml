@@ -11,4 +11,3 @@ description = "A high level API for the Tibco EMS."
 [dependencies]
 tibco_ems-sys = "0.1.6"
 log = "0.4"
-env_logger = "*"

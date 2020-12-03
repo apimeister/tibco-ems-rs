@@ -3,7 +3,6 @@ use tibco_ems::DestinationType;
 use tibco_ems::TextMessage;
 
 fn main() {
-  env_logger::init();
   let url = "tcp://localhost:7222";
   let user="admin";
   let password="admin";

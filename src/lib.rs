@@ -104,6 +104,20 @@ impl Connection {
     }
     Ok(session)
   }
+  /// open a session with transaction support
+  pub fn transacted_session(&self)-> Result<Session,Error> {
+    let session: Session;
+    unsafe{
+      let mut session_pointer:usize = 0;
+      let status = tibco_ems_sys::tibemsConnection_CreateSession(self.pointer, &mut session_pointer, tibco_ems_sys::tibems_bool::TIBEMS_FALSE, tibco_ems_sys::tibemsAcknowledgeMode::TIBEMS_EXPLICIT_CLIENT_ACKNOWLEDGE);
+      match status {
+        tibems_status::TIBEMS_OK => trace!("tibemsConnection_CreateSession: {:?}",status),
+        _ => error!("tibemsConnection_CreateSession: {:?}",status),
+      }
+      session = Session{pointer: session_pointer};
+    }
+    Ok(session)
+  }
 }
 
 //
@@ -514,6 +528,36 @@ impl Message{
           match status {
             tibems_status::TIBEMS_OK => trace!("tibemsMsg_Destroy: {:?}",status),
             _ => error!("tibemsMsg_Destroy: {:?}",status),
+          }
+        }
+      },
+      None => {}
+    }
+  }
+  /// confirms the message by invoking tibemsMsg_Acknowledge
+  pub fn confirm(&self){
+    match self.message_pointer{
+      Some(pointer) => {
+        unsafe{
+          let status = tibco_ems_sys::tibemsMsg_Acknowledge(pointer);
+          match status {
+            tibems_status::TIBEMS_OK => trace!("tibemsMsg_Acknowledge: {:?}",status),
+            _ => error!("tibemsMsg_Acknowledge: {:?}",status),
+          }
+        }
+      },
+      None => {}
+    }
+  }
+  /// rolls the message back by invoking tibemsMsg_Recover
+  pub fn rollback(&self){
+    match self.message_pointer{
+      Some(pointer) => {
+        unsafe{
+          let status = tibco_ems_sys::tibemsMsg_Recover(pointer);
+          match status {
+            tibems_status::TIBEMS_OK => trace!("tibemsMsg_Recover: {:?}",status),
+            _ => error!("tibemsMsg_Recover: {:?}",status),
           }
         }
       },

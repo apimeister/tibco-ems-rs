@@ -457,6 +457,15 @@ impl From<Message> for TextMessage {
   }
 }
 
+impl From<&Message> for TextMessage {
+  fn from(msg: &Message) -> Self {
+    TextMessage{
+      body: msg.body_text.clone().unwrap(),
+      header: msg.header.clone(),
+    }
+  }
+}
+
 /// represents a Bytes Message which can be transformed into Message through From,Into trait.
 #[allow(dead_code)]
 #[derive(Debug,Clone)]
@@ -469,6 +478,15 @@ pub struct BytesMessage{
 
 impl From<Message> for BytesMessage {
   fn from(msg: Message) -> Self {
+    BytesMessage{
+      body: msg.body_binary.clone().unwrap(),
+      header: msg.header.clone(),
+    }
+  }
+}
+
+impl From<&Message> for BytesMessage {
+  fn from(msg: &Message) -> Self {
     BytesMessage{
       body: msg.body_binary.clone().unwrap(),
       header: msg.header.clone(),

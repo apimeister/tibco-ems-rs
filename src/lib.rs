@@ -65,12 +65,15 @@ pub fn connect(url: String, user: String, password: String) -> Result<Connection
   let mut connection_pointer: usize = 0;
   unsafe{
     let factory = tibco_ems_sys::tibemsConnectionFactory_Create();
-    let status = tibco_ems_sys::tibemsConnectionFactory_SetServerURL(factory, CString::new(url).unwrap().as_ptr());
+    let c_url = CString::new(url).unwrap();
+    let status = tibco_ems_sys::tibemsConnectionFactory_SetServerURL(factory, c_url.as_ptr());
     match status {
       tibems_status::TIBEMS_OK => trace!("tibemsConnectionFactory_SetServerURL: {:?}",status),
       _ => error!("tibemsConnectionFactory_SetServerURL: {:?}",status),
     }
-    let status = tibco_ems_sys::tibemsConnectionFactory_CreateConnection(factory,&mut connection_pointer,CString::new(user).unwrap().as_ptr(),CString::new(password).unwrap().as_ptr());
+    let c_user = CString::new(user).unwrap();
+    let c_password = CString::new(password).unwrap();
+    let status = tibco_ems_sys::tibemsConnectionFactory_CreateConnection(factory,&mut connection_pointer,c_user.as_ptr(),c_password.as_ptr());
     match status {
       tibems_status::TIBEMS_OK => trace!("tibemsConnectionFactory_CreateConnection: {:?}",status),
       _ => error!("tibemsConnectionFactory_CreateConnection: {:?}",status),
@@ -170,14 +173,16 @@ impl Session {
       //create destination
       match destination.destination_type {
         DestinationType::Queue => {
-          let status = tibco_ems_sys::tibemsDestination_Create(&mut destination_pointer, tibemsDestinationType::TIBEMS_QUEUE, CString::new(destination.destination_name).unwrap().as_ptr());
+          let c_destination = CString::new(destination.destination_name).unwrap();
+          let status = tibco_ems_sys::tibemsDestination_Create(&mut destination_pointer, tibemsDestinationType::TIBEMS_QUEUE, c_destination.as_ptr());
           match status {
             tibems_status::TIBEMS_OK => trace!("tibemsDestination_Create: {:?}",status),
             _ => error!("tibemsDestination_Create: {:?}",status),
           }
         },
         DestinationType::Topic => {
-          let status = tibco_ems_sys::tibemsDestination_Create(&mut destination_pointer, tibemsDestinationType::TIBEMS_TOPIC, CString::new(destination.destination_name).unwrap().as_ptr());
+          let c_destination = CString::new(destination.destination_name).unwrap();
+          let status = tibco_ems_sys::tibemsDestination_Create(&mut destination_pointer, tibemsDestinationType::TIBEMS_TOPIC, c_destination.as_ptr());
           match status {
             tibems_status::TIBEMS_OK => trace!("tibemsDestination_Create: {:?}",status),
             _ => error!("tibemsDestination_Create: {:?}",status),
@@ -186,12 +191,12 @@ impl Session {
       }
       //open consumer
       let mut consumer_pointer:usize = 0;
-      let selector_str;
+      let c_selector:CString;
       match selector {
-        Some(val) => selector_str=CString::new(val).unwrap().as_ptr(),
-        _ => selector_str = std::ptr::null(),
+        Some(val) => c_selector=CString::new(val).unwrap(),
+        _ => c_selector = CString::new("".to_string()).unwrap(),
       }
-      let status = tibco_ems_sys::tibemsSession_CreateConsumer(self.pointer, &mut consumer_pointer,destination_pointer, selector_str, tibco_ems_sys::tibems_bool::TIBEMS_TRUE);
+      let status = tibco_ems_sys::tibemsSession_CreateConsumer(self.pointer, &mut consumer_pointer,destination_pointer, c_selector.as_ptr(), tibco_ems_sys::tibems_bool::TIBEMS_TRUE);
       match status {
         tibems_status::TIBEMS_OK => trace!("tibemsSession_CreateConsumer: {:?}",status),
         _ => error!("tibemsSession_CreateConsumer: {:?}",status),
@@ -218,14 +223,16 @@ impl Session {
     unsafe{
       match destination.destination_type {
         DestinationType::Queue => {
-          let status = tibco_ems_sys::tibemsDestination_Create(&mut dest, tibemsDestinationType::TIBEMS_QUEUE, CString::new(destination.destination_name).unwrap().as_ptr());
+          let c_destination = CString::new(destination.destination_name).unwrap();
+          let status = tibco_ems_sys::tibemsDestination_Create(&mut dest, tibemsDestinationType::TIBEMS_QUEUE, c_destination.as_ptr());
           match status {
             tibems_status::TIBEMS_OK => trace!("tibemsDestination_Create: {:?}",status),
             _ => error!("tibemsDestination_Create: {:?}",status),
           }
         },
         DestinationType::Topic => {
-          let status = tibco_ems_sys::tibemsDestination_Create(&mut dest, tibemsDestinationType::TIBEMS_TOPIC, CString::new(destination.destination_name).unwrap().as_ptr());
+          let c_destination = CString::new(destination.destination_name).unwrap();
+          let status = tibco_ems_sys::tibemsDestination_Create(&mut dest, tibemsDestinationType::TIBEMS_TOPIC, c_destination.as_ptr());
           match status {
             tibems_status::TIBEMS_OK => trace!("tibemsDestination_Create: {:?}",status),
             _ => error!("tibemsDestination_Create: {:?}",status),
@@ -246,7 +253,8 @@ impl Session {
             tibems_status::TIBEMS_OK => trace!("tibemsTextMsg_Create: {:?}",status),
             _ => error!("tibemsTextMsg_Create: {:?}",status),
           }
-          let status = tibco_ems_sys::tibemsTextMsg_SetText(msg,CString::new(message.body_text.clone().unwrap()).unwrap().as_ptr());
+          let c_text = CString::new(message.body_text.clone().unwrap()).unwrap();
+          let status = tibco_ems_sys::tibemsTextMsg_SetText(msg,c_text.as_ptr());
           match status {
             tibems_status::TIBEMS_OK => trace!("tibemsTextMsg_SetText: {:?}",status),
             _ => error!("tibemsTextMsg_SetText: {:?}",status),
@@ -264,9 +272,11 @@ impl Session {
       match message.header.clone() {
         Some(headers)=>{
           for (key, val) in &headers {
+            let c_name = CString::new(key.to_string()).unwrap();
+            let c_val = CString::new(val.to_string()).unwrap();
             let status = tibco_ems_sys::tibemsMsg_SetStringProperty(msg, 
-              CString::new(key.to_string()).unwrap().as_ptr(), 
-              CString::new(val.to_string()).unwrap().as_ptr());
+              c_name.as_ptr(), 
+              c_val.as_ptr());
               match status {
                 tibems_status::TIBEMS_OK => trace!("tibemsMsg_SetStringProperty: {:?}",status),
                 _ => error!("tibemsMsg_SetStringProperty: {:?}",status),
@@ -315,7 +325,8 @@ impl Session {
             tibems_status::TIBEMS_OK => trace!("tibemsSession_CreateTemporaryQueue: {:?}",status),
             _ => error!("tibemsSession_CreateTemporaryQueue: {:?}",status),
           }
-          let status = tibco_ems_sys::tibemsDestination_Create(&mut dest, tibemsDestinationType::TIBEMS_QUEUE, CString::new(destination.destination_name).unwrap().as_ptr());
+          let c_destination = CString::new(destination.destination_name).unwrap();
+          let status = tibco_ems_sys::tibemsDestination_Create(&mut dest, tibemsDestinationType::TIBEMS_QUEUE, c_destination.as_ptr());
           match status {
             tibems_status::TIBEMS_OK => trace!("tibemsDestination_Create: {:?}",status),
             _ => error!("tibemsDestination_Create: {:?}",status),
@@ -327,7 +338,8 @@ impl Session {
             tibems_status::TIBEMS_OK => trace!("tibemsSession_CreateTemporaryTopic: {:?}",status),
             _ => error!("tibemsSession_CreateTemporaryTopic: {:?}",status),
           }
-          let status = tibco_ems_sys::tibemsDestination_Create(&mut dest, tibemsDestinationType::TIBEMS_TOPIC, CString::new(destination.destination_name).unwrap().as_ptr());
+          let c_destination = CString::new(destination.destination_name).unwrap();
+          let status = tibco_ems_sys::tibemsDestination_Create(&mut dest, tibemsDestinationType::TIBEMS_TOPIC, c_destination.as_ptr());
           match status {
             tibems_status::TIBEMS_OK => trace!("tibemsDestination_Create: {:?}",status),
             _ => error!("tibemsDestination_Create: {:?}",status),
@@ -348,7 +360,8 @@ impl Session {
             tibems_status::TIBEMS_OK => trace!("tibemsTextMsg_Create: {:?}",status),
             _ => error!("tibemsTextMsg_Create: {:?}",status),
           }
-          let status = tibco_ems_sys::tibemsTextMsg_SetText(msg,CString::new(message.body_text.clone().unwrap()).unwrap().as_ptr());
+          let c_text = CString::new(message.body_text.clone().unwrap()).unwrap();
+          let status = tibco_ems_sys::tibemsTextMsg_SetText(msg,c_text.as_ptr());
           match status {
             tibems_status::TIBEMS_OK => trace!("tibemsTextMsg_SetText: {:?}",status),
             _ => error!("tibemsTextMsg_SetText: {:?}",status),
@@ -366,9 +379,11 @@ impl Session {
       match message.header.clone() {
         Some(headers)=>{
           for (key, val) in &headers {
+            let c_name = CString::new(key.to_string()).unwrap();
+            let c_val = CString::new(val.to_string()).unwrap();
             let status = tibco_ems_sys::tibemsMsg_SetStringProperty(msg, 
-              CString::new(key.to_string()).unwrap().as_ptr(), 
-              CString::new(val.to_string()).unwrap().as_ptr());
+              c_name.as_ptr(), 
+              c_val.as_ptr());
               match status {
                 tibems_status::TIBEMS_OK => trace!("tibemsMsg_SetStringProperty: {:?}",status),
                 _ => error!("tibemsMsg_SetStringProperty: {:?}",status),

@@ -19,7 +19,8 @@ pub struct Connection{
 #[allow(dead_code)]
 #[derive(Debug,Clone)]
 pub struct Session{
-  pointer: usize
+  pointer: usize,
+  producer_pointer: usize,
 }
 
 /// holds the native Consumer pointer
@@ -103,7 +104,14 @@ impl Connection {
         tibems_status::TIBEMS_OK => trace!("tibemsConnection_CreateSession: {:?}",status),
         _ => error!("tibemsConnection_CreateSession: {:?}",status),
       }
-      session = Session{pointer: session_pointer};
+      let mut producer: usize = 0;
+      let dest: usize = 0;
+      let status = tibco_ems_sys::tibemsSession_CreateProducer(session_pointer,&mut producer,dest);
+      match status {
+        tibems_status::TIBEMS_OK => trace!("tibemsSession_CreateProducer: {:?}",status),
+        _ => error!("tibemsSession_CreateProducer: {:?}",status),
+      }
+      session = Session{pointer: session_pointer, producer_pointer: producer};
     }
     Ok(session)
   }
@@ -117,7 +125,14 @@ impl Connection {
         tibems_status::TIBEMS_OK => trace!("tibemsConnection_CreateSession: {:?}",status),
         _ => error!("tibemsConnection_CreateSession: {:?}",status),
       }
-      session = Session{pointer: session_pointer};
+      let mut producer: usize = 0;
+      let dest: usize = 0;
+      let status = tibco_ems_sys::tibemsSession_CreateProducer(session_pointer,&mut producer,dest);
+      match status {
+        tibems_status::TIBEMS_OK => trace!("tibemsSession_CreateProducer: {:?}",status),
+        _ => error!("tibemsSession_CreateProducer: {:?}",status),
+      }
+      session = Session{pointer: session_pointer, producer_pointer: producer};
     }
     Ok(session)
   }
@@ -168,7 +183,7 @@ impl Session {
   /// open a message consumer
   pub fn queue_consumer(&self, destination: Destination, selector: Option<String>)-> Result<Consumer,Error> {
     let consumer: Consumer;
-    let mut destination_pointer:usize = 0;
+    let mut destination_pointer: usize = 0;
     unsafe{
       //create destination
       match destination.destination_type {
@@ -209,6 +224,14 @@ impl Session {
   /// close a session
   fn close(&self){
     unsafe{
+      //destroy producer
+      if self.producer_pointer != 0 {
+        let status = tibco_ems_sys::tibemsMsgProducer_Close(self.producer_pointer);
+        match status {
+          tibems_status::TIBEMS_OK => trace!("tibemsMsgProducer_Close: {:?}",status),
+          _ => error!("tibemsMsgProducer_Close: {:?}",status),
+        }
+      }
       let status = tibco_ems_sys::tibemsSession_Close(self.pointer);
       match status {
         tibems_status::TIBEMS_OK => trace!("tibemsSession_Close: {:?}",status),
@@ -219,7 +242,8 @@ impl Session {
 
   /// sending a message to a destination (only queues are supported)
   pub fn send_message(&self, destination: Destination, message: Message) -> Result<(),Error>{
-    let mut dest:usize = 0;
+    let mut dest: usize = 0;
+    let mut local_producer: usize = 0;
     unsafe{
       match destination.destination_type {
         DestinationType::Queue => {
@@ -239,11 +263,12 @@ impl Session {
           }
         }
       }
-      let mut producer: usize = 0;
-      let status = tibco_ems_sys::tibemsSession_CreateProducer(self.pointer,&mut producer,dest);
-      match status {
-        tibems_status::TIBEMS_OK => trace!("tibemsSession_CreateProducer: {:?}",status),
-        _ => error!("tibemsSession_CreateProducer: {:?}",status),
+      if self.producer_pointer == 0 {
+        let status = tibco_ems_sys::tibemsSession_CreateProducer(self.pointer,&mut local_producer,dest);
+        match status {
+          tibems_status::TIBEMS_OK => trace!("tibemsSession_CreateProducer: {:?}",status),
+          _ => error!("tibemsSession_CreateProducer: {:?}",status),
+        }
       }
       let mut msg: usize = 0;
       match message.message_type {
@@ -285,22 +310,25 @@ impl Session {
         },
         None => {},
       }
-      let status = tibco_ems_sys::tibemsMsgProducer_Send(producer, msg);
+      let status = tibco_ems_sys::tibemsMsgProducer_SendToDestination(
+          self.producer_pointer, dest, msg);
       match status {
         tibems_status::TIBEMS_OK => trace!("tibemsMsgProducer_Send: {:?}",status),
         _ => error!("tibemsMsgProducer_Send: {:?}",status),
+      }
+      //destroy producer if generated inline
+      if self.producer_pointer == 0 {
+        let status = tibco_ems_sys::tibemsMsgProducer_Close(local_producer);
+        match status {
+          tibems_status::TIBEMS_OK => trace!("tibemsMsgProducer_Close: {:?}",status),
+          _ => error!("tibemsMsgProducer_Close: {:?}",status),
+        }
       }
       //destroy message
       let status = tibco_ems_sys::tibemsMsg_Destroy(msg);
       match status {
         tibems_status::TIBEMS_OK => trace!("tibemsMsg_Destroy: {:?}",status),
         _ => error!("tibemsMsg_Destroy: {:?}",status),
-      }
-      //destroy producer
-      let status = tibco_ems_sys::tibemsMsgProducer_Close(producer);
-      match status {
-        tibems_status::TIBEMS_OK => trace!("tibemsMsgProducer_Close: {:?}",status),
-        _ => error!("tibemsMsgProducer_Close: {:?}",status),
       }
       //destroy destination
       let status = tibco_ems_sys::tibemsDestination_Destroy(dest);
@@ -316,7 +344,7 @@ impl Session {
   pub fn request_reply(&self, destination: Destination, message: Message, timeout: i64) -> Result<Option<Message>,Error>{
     //create temporary destination
     let mut reply_dest: usize = 0;
-    let mut dest:usize = 0;
+    let mut dest: usize = 0;
     unsafe {
       match destination.destination_type {
         DestinationType::Queue =>{
@@ -347,7 +375,7 @@ impl Session {
         }
       }
       let mut producer: usize = 0;
-      let status = tibco_ems_sys::tibemsSession_CreateProducer(self.pointer,&mut producer,dest);
+      let status = tibco_ems_sys::tibemsSession_CreateProducer(self.pointer,&mut producer, dest);
       match status {
         tibems_status::TIBEMS_OK => trace!("tibemsSession_CreateProducer: {:?}",status),
         _ => error!("tibemsSession_CreateProducer: {:?}",status),

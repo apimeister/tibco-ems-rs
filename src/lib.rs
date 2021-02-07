@@ -275,108 +275,7 @@ impl Session {
           _ => error!("tibemsSession_CreateProducer: {:?}",status),
         }
       }
-      let mut msg: usize = 0;
-      match message.message_type {
-        MessageType::TextMessage =>{
-          let status = tibco_ems_sys::tibemsTextMsg_Create(&mut msg);
-          match status {
-            tibems_status::TIBEMS_OK => trace!("tibemsTextMsg_Create: {:?}",status),
-            _ => error!("tibemsTextMsg_Create: {:?}",status),
-          }
-          let c_text = CString::new(message.body_text.clone().unwrap()).unwrap();
-          let status = tibco_ems_sys::tibemsTextMsg_SetText(msg,c_text.as_ptr());
-          match status {
-            tibems_status::TIBEMS_OK => trace!("tibemsTextMsg_SetText: {:?}",status),
-            _ => error!("tibemsTextMsg_SetText: {:?}",status),
-          }
-        },
-        MessageType::BytesMessage =>{
-          let status = tibco_ems_sys::tibemsBytesMsg_Create(&mut msg);
-          match status {
-            tibems_status::TIBEMS_OK => trace!("tibemsBytesMsg_Create: {:?}",status),
-            _ => error!("tibemsBytesMsg_Create: {:?}",status),
-          }
-          let content = message.body_binary.clone().unwrap();
-          let body_size = content.len();
-          let body_ptr = content.as_ptr() as *const c_void;
-          let status = tibco_ems_sys::tibemsBytesMsg_SetBytes(msg,body_ptr,body_size as u32);
-          match status {
-            tibems_status::TIBEMS_OK => trace!("tibemsBytesMsg_SetBytes: {:?}",status),
-            _ => error!("tibemsBytesMsg_SetBytes: {:?}",status),
-          }
-        },
-        MessageType::MapMessage => {
-          let status = tibco_ems_sys::tibemsMapMsg_Create(&mut msg);
-          match status {
-            tibems_status::TIBEMS_OK => trace!("tibemsMapMsg_Create: {:?}",status),
-            _ => error!("tibemsMapMsg_Create: {:?}",status),
-          }
-          for item in message.body_map.clone().unwrap() {
-            let c_name = CString::new(item.name).unwrap();
-            match item.value_type {
-              PropertyType::Boolean => {
-                let val;
-                if item.value[0] == 0 {
-                  val = tibems_bool::TIBEMS_FALSE;
-                }else{
-                  val = tibems_bool::TIBEMS_TRUE;
-                }
-                let status = tibco_ems_sys::tibemsMapMsg_SetBoolean(msg, c_name.as_ptr(), val);
-                match status {
-                  tibems_status::TIBEMS_OK => trace!("tibemsMapMsg_SetBoolean: {:?}",status),
-                  _ => error!("tibemsMapMsg_SetBoolean: {:?}",status),
-                }
-              },
-              PropertyType::String => {
-                let c_value = CString::new(item.value).unwrap();
-                let status = tibco_ems_sys::tibemsMapMsg_SetString(msg, c_name.as_ptr(), c_value.as_ptr());
-                match status {
-                  tibems_status::TIBEMS_OK => trace!("tibemsMapMsg_SetString: {:?}",status),
-                  _ => error!("tibemsMapMsg_SetString: {:?}",status),
-                }
-              },
-              PropertyType::Integer => {
-                let (int_bytes, _) = item.value.split_at(std::mem::size_of::<i32>());
-                let value = i32::from_ne_bytes(int_bytes.try_into().unwrap());
-                let status = tibco_ems_sys::tibemsMapMsg_SetInt(msg, c_name.as_ptr(), value);
-                match status {
-                  tibems_status::TIBEMS_OK => trace!("tibemsMapMsg_SetInt: {:?}",status),
-                  _ => error!("tibemsMapMsg_SetInt: {:?}",status),
-                }
-              },
-              PropertyType::Long => {
-                let (long_bytes, _) = item.value.split_at(std::mem::size_of::<i64>());
-                let value = i64::from_ne_bytes(long_bytes.try_into().unwrap());
-                let status = tibco_ems_sys::tibemsMapMsg_SetLong(msg, c_name.as_ptr(), value);
-                match status {
-                  tibems_status::TIBEMS_OK => trace!("tibemsMapMsg_SetLong: {:?}",status),
-                  _ => error!("tibemsMapMsg_SetLong: {:?}",status),
-                }
-              },
-              _ => {
-                panic!("missing map message type implementation");
-              },
-            }
-          }
-        },
-      }
-      //set header
-      match message.header.clone() {
-        Some(headers)=>{
-          for (key, val) in &headers {
-            let c_name = CString::new(key.to_string()).unwrap();
-            let c_val = CString::new(val.to_string()).unwrap();
-            let status = tibco_ems_sys::tibemsMsg_SetStringProperty(msg, 
-              c_name.as_ptr(), 
-              c_val.as_ptr());
-              match status {
-                tibems_status::TIBEMS_OK => trace!("tibemsMsg_SetStringProperty: {:?}",status),
-                _ => error!("tibemsMsg_SetStringProperty: {:?}",status),
-              }
-          }
-        },
-        None => {},
-      }
+      let msg = build_message_pointer_from_message(&message);
       let status = tibco_ems_sys::tibemsMsgProducer_SendToDestination(
           self.producer_pointer, dest, msg);
       match status {
@@ -447,61 +346,7 @@ impl Session {
         tibems_status::TIBEMS_OK => trace!("tibemsSession_CreateProducer: {:?}",status),
         _ => error!("tibemsSession_CreateProducer: {:?}",status),
       }
-      let mut msg: usize = 0;
-      match message.message_type {
-        MessageType::TextMessage =>{
-          let status = tibco_ems_sys::tibemsTextMsg_Create(&mut msg);
-          match status {
-            tibems_status::TIBEMS_OK => trace!("tibemsTextMsg_Create: {:?}",status),
-            _ => error!("tibemsTextMsg_Create: {:?}",status),
-          }
-          let c_text = CString::new(message.body_text.clone().unwrap()).unwrap();
-          let status = tibco_ems_sys::tibemsTextMsg_SetText(msg,c_text.as_ptr());
-          match status {
-            tibems_status::TIBEMS_OK => trace!("tibemsTextMsg_SetText: {:?}",status),
-            _ => error!("tibemsTextMsg_SetText: {:?}",status),
-          }
-        },
-        MessageType::BytesMessage =>{
-          let status = tibco_ems_sys::tibemsBytesMsg_Create(&mut msg);
-          match status {
-            tibems_status::TIBEMS_OK => trace!("tibemsBytesMsg_Create: {:?}",status),
-            _ => error!("tibemsBytesMsg_Create: {:?}",status),
-          }
-          let content = message.body_binary.clone().unwrap();
-          let body_size = content.len();
-          let body_ptr = content.as_ptr() as *const c_void;
-          let status = tibco_ems_sys::tibemsBytesMsg_SetBytes(msg,body_ptr,body_size as u32);
-          match status {
-            tibems_status::TIBEMS_OK => trace!("tibemsBytesMsg_SetBytes: {:?}",status),
-            _ => error!("tibemsBytesMsg_SetBytes: {:?}",status),
-          }
-        },
-        MessageType::MapMessage => {
-          let status = tibco_ems_sys::tibemsMapMsg_Create(&mut msg);
-          match status {
-            tibems_status::TIBEMS_OK => trace!("tibemsMapMsg_Create: {:?}",status),
-            _ => error!("tibemsMapMsg_Create: {:?}",status),
-          }
-        },
-      }
-      //set header
-      match message.header.clone() {
-        Some(headers)=>{
-          for (key, val) in &headers {
-            let c_name = CString::new(key.to_string()).unwrap();
-            let c_val = CString::new(val.to_string()).unwrap();
-            let status = tibco_ems_sys::tibemsMsg_SetStringProperty(msg, 
-              c_name.as_ptr(), 
-              c_val.as_ptr());
-              match status {
-                tibems_status::TIBEMS_OK => trace!("tibemsMsg_SetStringProperty: {:?}",status),
-                _ => error!("tibemsMsg_SetStringProperty: {:?}",status),
-              }
-          }
-        },
-        None => {},
-      }
+      let msg = build_message_pointer_from_message(&message);
       //set reply to
       let status = tibco_ems_sys::tibemsMsg_SetReplyTo(msg, reply_dest);
       match status {
@@ -830,16 +675,116 @@ impl Drop for Message {
   }
 }
 
+fn build_message_pointer_from_message(message: &Message) -> usize {
+  let mut msg: usize = 0;
+  unsafe{
+    match message.message_type {
+      MessageType::TextMessage =>{
+        let status = tibco_ems_sys::tibemsTextMsg_Create(&mut msg);
+        match status {
+          tibems_status::TIBEMS_OK => trace!("tibemsTextMsg_Create: {:?}",status),
+          _ => error!("tibemsTextMsg_Create: {:?}",status),
+        }
+        let c_text = CString::new(message.body_text.clone().unwrap()).unwrap();
+        let status = tibco_ems_sys::tibemsTextMsg_SetText(msg,c_text.as_ptr());
+        match status {
+          tibems_status::TIBEMS_OK => trace!("tibemsTextMsg_SetText: {:?}",status),
+          _ => error!("tibemsTextMsg_SetText: {:?}",status),
+        }
+      },
+      MessageType::BytesMessage =>{
+        let status = tibco_ems_sys::tibemsBytesMsg_Create(&mut msg);
+        match status {
+          tibems_status::TIBEMS_OK => trace!("tibemsBytesMsg_Create: {:?}",status),
+          _ => error!("tibemsBytesMsg_Create: {:?}",status),
+        }
+        let content = message.body_binary.clone().unwrap();
+        let body_size = content.len();
+        let body_ptr = content.as_ptr() as *const c_void;
+        let status = tibco_ems_sys::tibemsBytesMsg_SetBytes(msg,body_ptr,body_size as u32);
+        match status {
+          tibems_status::TIBEMS_OK => trace!("tibemsBytesMsg_SetBytes: {:?}",status),
+          _ => error!("tibemsBytesMsg_SetBytes: {:?}",status),
+        }
+      },
+      MessageType::MapMessage => {
+        let status = tibco_ems_sys::tibemsMapMsg_Create(&mut msg);
+        match status {
+          tibems_status::TIBEMS_OK => trace!("tibemsMapMsg_Create: {:?}",status),
+          _ => error!("tibemsMapMsg_Create: {:?}",status),
+        }
+        for item in message.body_map.clone().unwrap() {
+          let c_name = CString::new(item.name).unwrap();
+          match item.value_type {
+            PropertyType::Boolean => {
+              let val;
+              if item.value[0] == 0 {
+                val = tibems_bool::TIBEMS_FALSE;
+              }else{
+                val = tibems_bool::TIBEMS_TRUE;
+              }
+              let status = tibco_ems_sys::tibemsMapMsg_SetBoolean(msg, c_name.as_ptr(), val);
+              match status {
+                tibems_status::TIBEMS_OK => trace!("tibemsMapMsg_SetBoolean: {:?}",status),
+                _ => error!("tibemsMapMsg_SetBoolean: {:?}",status),
+              }
+            },
+            PropertyType::String => {
+              let c_value = CString::new(item.value).unwrap();
+              let status = tibco_ems_sys::tibemsMapMsg_SetString(msg, c_name.as_ptr(), c_value.as_ptr());
+              match status {
+                tibems_status::TIBEMS_OK => trace!("tibemsMapMsg_SetString: {:?}",status),
+                _ => error!("tibemsMapMsg_SetString: {:?}",status),
+              }
+            },
+            PropertyType::Integer => {
+              let (int_bytes, _) = item.value.split_at(std::mem::size_of::<i32>());
+              let value = i32::from_ne_bytes(int_bytes.try_into().unwrap());
+              let status = tibco_ems_sys::tibemsMapMsg_SetInt(msg, c_name.as_ptr(), value);
+              match status {
+                tibems_status::TIBEMS_OK => trace!("tibemsMapMsg_SetInt: {:?}",status),
+                _ => error!("tibemsMapMsg_SetInt: {:?}",status),
+              }
+            },
+            PropertyType::Long => {
+              let (long_bytes, _) = item.value.split_at(std::mem::size_of::<i64>());
+              let value = i64::from_ne_bytes(long_bytes.try_into().unwrap());
+              let status = tibco_ems_sys::tibemsMapMsg_SetLong(msg, c_name.as_ptr(), value);
+              match status {
+                tibems_status::TIBEMS_OK => trace!("tibemsMapMsg_SetLong: {:?}",status),
+                _ => error!("tibemsMapMsg_SetLong: {:?}",status),
+              }
+            },
+            _ => {
+              panic!("missing map message type implementation");
+            },
+          }
+        }
+      },
+    }
+    //set header
+    match message.header.clone() {
+      Some(headers)=>{
+        for (key, val) in &headers {
+          let c_name = CString::new(key.to_string()).unwrap();
+          let c_val = CString::new(val.to_string()).unwrap();
+          let status = tibco_ems_sys::tibemsMsg_SetStringProperty(msg, 
+            c_name.as_ptr(), 
+            c_val.as_ptr());
+            match status {
+              tibems_status::TIBEMS_OK => trace!("tibemsMsg_SetStringProperty: {:?}",status),
+              _ => error!("tibemsMsg_SetStringProperty: {:?}",status),
+            }
+        }
+      },
+      None => {},
+    }
+  }
+  msg
+}
+
 fn build_message_from_pointer(msg_pointer: usize) -> Message {
-  let mut msg = Message{
-    message_type: MessageType::TextMessage,
-    body_text: None,
-    body_binary: None,
-    body_map: None,
-    header: None,
-    message_pointer: None,
-    reply_to: None,
-  };
+  let mut msg;
   unsafe{
     let mut msg_type: tibco_ems_sys::tibemsMsgType = tibco_ems_sys::tibemsMsgType::TIBEMS_TEXT_MESSAGE;
     let status = tibco_ems_sys::tibemsMsg_GetBodyType(msg_pointer, &mut msg_type);

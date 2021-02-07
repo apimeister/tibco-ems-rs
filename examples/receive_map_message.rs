@@ -1,5 +1,7 @@
 use tibco_ems::Destination;
 use tibco_ems::DestinationType;
+use tibco_ems::MapMessage;
+use tibco_ems::MessageType;
 
 fn main() {
   let url = "tcp://localhost:7222";
@@ -8,7 +10,7 @@ fn main() {
 
   let connection = tibco_ems::connect(url,user,password).unwrap();
   {
-    let session = connection.transacted_session().unwrap();
+    let session = connection.session().unwrap();
 
     let destination = Destination{
       destination_type: DestinationType::Queue,
@@ -23,10 +25,16 @@ fn main() {
       Ok(result_value) => {
         match result_value {
           Some(message) => {
-            // println!("confirming message");
-            // message.confirm();
-            println!("rolling back message");
-            message.rollback();
+            match message.message_type {
+              MessageType::MapMessage =>{
+                println!("received map message");
+                let map_message = MapMessage::from(message);
+                println!("content: {:?}", map_message.header);
+              },
+              _ => {
+                println!("unknown type");
+              }
+            }    
           },
           None =>{
             println!("no message returned");

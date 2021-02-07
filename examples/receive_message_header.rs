@@ -1,7 +1,6 @@
 use tibco_ems::Destination;
 use tibco_ems::DestinationType;
-use tibco_ems::TextMessage;
-use tibco_ems::BytesMessage;
+use tibco_ems::{TextMessage, BytesMessage, MapMessage};
 use tibco_ems::MessageType;
 
 fn main() {
@@ -9,7 +8,7 @@ fn main() {
   let user="admin";
   let password="admin";
 
-  let connection = tibco_ems::connect(url.to_string(),user.to_string(),password.to_string()).unwrap();
+  let connection = tibco_ems::connect(url,user,password).unwrap();
   {
     let session = connection.session().unwrap();
 
@@ -36,6 +35,11 @@ fn main() {
                 println!("received bytes message");
                 let bytes_message = BytesMessage::from(message);
                 println!("header: {:?}",bytes_message.header);
+              },
+              MessageType::MapMessage =>{
+                println!("received map message");
+                let map_message = MapMessage::from(message);
+                println!("header: {:?}",map_message.header);
               },
             }    
           },

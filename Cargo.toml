@@ -1,6 +1,6 @@
 [package]
 name = "tibco_ems"
-version = "0.1.19"
+version = "0.2.0"
 authors = ["Jens Walter <jens@apimeister.com>"]
 edition = "2018"
 license = "Apache-2.0"
@@ -10,4 +10,5 @@ description = "A high level API for the Tibco EMS."
 
 [dependencies]
 log = "0.4"
+byteorder = "1"
 tibco_ems-sys = "0.1.9"

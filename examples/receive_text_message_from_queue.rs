@@ -8,7 +8,7 @@ fn main() {
   let user="admin";
   let password="admin";
 
-  let connection = tibco_ems::connect(url.to_string(),user.to_string(),password.to_string()).unwrap();
+  let connection = tibco_ems::connect(url,user,password).unwrap();
   {
     let session = connection.session().unwrap();
 

@@ -9,8 +9,7 @@ use tibco_ems_sys::tibems_status;
 use tibco_ems_sys::tibemsDestinationType;
 use tibco_ems_sys::tibems_bool;
 use log::{trace, error};
-use byteorder::{BigEndian, WriteBytesExt, ReadBytesExt};
-use std::io::Cursor;
+use std::convert::TryInto;
 
 /// holds the native Connection pointer
 #[allow(dead_code)]
@@ -337,8 +336,8 @@ impl Session {
                 }
               },
               PropertyType::Integer => {
-                let mut rdr = Cursor::new(item.value);
-                let value: i32 = rdr.read_i32::<BigEndian>().unwrap();
+                let (int_bytes, _) = item.value.split_at(std::mem::size_of::<i32>());
+                let value = i32::from_ne_bytes(int_bytes.try_into().unwrap());
                 let status = tibco_ems_sys::tibemsMapMsg_SetInt(msg, c_name.as_ptr(), value);
                 match status {
                   tibems_status::TIBEMS_OK => trace!("tibemsMapMsg_SetInt: {:?}",status),
@@ -346,8 +345,8 @@ impl Session {
                 }
               },
               PropertyType::Long => {
-                let mut rdr = Cursor::new(item.value);
-                let value: i64 = rdr.read_i64::<BigEndian>().unwrap();
+                let (long_bytes, _) = item.value.split_at(std::mem::size_of::<i64>());
+                let value = i64::from_ne_bytes(long_bytes.try_into().unwrap());
                 let status = tibco_ems_sys::tibemsMapMsg_SetLong(msg, c_name.as_ptr(), value);
                 match status {
                   tibems_status::TIBEMS_OK => trace!("tibemsMapMsg_SetLong: {:?}",status),
@@ -753,21 +752,17 @@ impl From<MapMessage> for Message {
       })
     }
     for e in msg.body_int {
-      let mut wtr = vec![];
-      wtr.write_i32::<BigEndian>(e.1).unwrap();
       map.push(TypedEntry{
         name: e.0,
         value_type: PropertyType::Integer,
-        value: wtr,
+        value: e.1.to_ne_bytes().to_vec(),
       });
     }
     for e in msg.body_long {
-      let mut wtr = vec![];
-      wtr.write_i64::<BigEndian>(e.1).unwrap();
       map.push(TypedEntry{
         name: e.0,
         value_type: PropertyType::Long,
-        value: wtr,
+        value: e.1.to_ne_bytes().to_vec(),
       });
     }
     Message{

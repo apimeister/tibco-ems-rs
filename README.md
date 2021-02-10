@@ -13,15 +13,6 @@ TIBCO Enterprise Messaging Service, and all related components therein are prope
 
 To build this crate, the TIBCO EMS C library must either be in the LD_LIBRARY_PATH or alternatively a EMS_HOME environment variable must be set.
 
-## Usage
-
-Put this in your `Cargo.toml`:
-
-```text
-[dependencies]
-tibco_ems = "0.1"
-```
-
 ## Examples
 
 Sending a text message to a queue.
@@ -36,7 +27,7 @@ fn main() {
   let user="admin";
   let password="admin";
 
-  let connection = tibco_ems::connect(url.to_string(),user.to_string(),password.to_string()).unwrap();
+  let connection = tibco_ems::connect(url,user,password).unwrap();
   {
     let session = connection.session().unwrap();
 
@@ -64,7 +55,7 @@ fn main() {
   let user="admin";
   let password="admin";
 
-  let connection = tibco_ems::connect(url.to_string(),user.to_string(),password.to_string()).unwrap();
+  let connection = tibco_ems::connect(url,user,password).unwrap();
   {
     let session = connection.session().unwrap();
 

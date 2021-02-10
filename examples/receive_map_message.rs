@@ -4,6 +4,7 @@ use tibco_ems::MapMessage;
 use tibco_ems::MessageType;
 
 fn main() {
+  env_logger::init();
   let url = "tcp://localhost:7222";
   let user="admin";
   let password="admin";
@@ -29,7 +30,7 @@ fn main() {
               MessageType::MapMessage =>{
                 println!("received map message");
                 let map_message = MapMessage::from(message);
-                println!("content: {:?}", map_message.header);
+                println!("content: {:?}", map_message);
               },
               _ => {
                 println!("unknown type");

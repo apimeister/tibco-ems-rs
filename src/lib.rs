@@ -8,6 +8,7 @@ use std::io::Error;
 use tibco_ems_sys::tibems_status;
 use tibco_ems_sys::tibemsDestinationType;
 use tibco_ems_sys::tibems_bool;
+use tibco_ems_sys::tibemsMsgType;
 use log::{trace, error};
 use std::convert::TryInto;
 
@@ -490,9 +491,8 @@ pub struct MapMessage {
 
 impl From<Message> for MapMessage {
   fn from(msg: Message) -> Self {
-    let mut out_msg: MapMessage = Default::default();
-    out_msg.header= msg.header.clone();
-    out_msg
+    //use the borrow implementation
+    (&msg).into()
   }
 }
 
@@ -500,6 +500,17 @@ impl From<&Message> for MapMessage {
   fn from(msg: &Message) -> Self {
     let mut out_msg: MapMessage = Default::default();
     out_msg.header= msg.header.clone();
+    let map = msg.body_map.clone();
+    for entry in map.unwrap() {
+      match entry.value_type {
+        PropertyType::String => {
+          out_msg.body_string.insert(entry.name, String::from_utf8(entry.value).unwrap());
+        }
+        _ => {
+          panic!("missing body type implementation {:?}",entry.value_type);
+        }
+      }
+    }
     out_msg
   }
 }
@@ -786,14 +797,14 @@ fn build_message_pointer_from_message(message: &Message) -> usize {
 fn build_message_from_pointer(msg_pointer: usize) -> Message {
   let mut msg;
   unsafe{
-    let mut msg_type: tibco_ems_sys::tibemsMsgType = tibco_ems_sys::tibemsMsgType::TIBEMS_TEXT_MESSAGE;
+    let mut msg_type: tibemsMsgType = tibemsMsgType::TIBEMS_TEXT_MESSAGE;
     let status = tibco_ems_sys::tibemsMsg_GetBodyType(msg_pointer, &mut msg_type);
     match status {
       tibems_status::TIBEMS_OK => trace!("tibemsMsg_GetBodyType: {:?}",status),
       _ => error!("tibemsMsg_GetBodyType: {:?}",status),
     }
     match msg_type {
-      tibco_ems_sys::tibemsMsgType::TIBEMS_TEXT_MESSAGE => {
+      tibemsMsgType::TIBEMS_TEXT_MESSAGE => {
         let mut header: HashMap<String,String> = HashMap::new();
         let buf_vec:Vec<i8> = vec![0; 0];
         let buf_ref: *const std::os::raw::c_char = buf_vec.as_ptr();
@@ -820,6 +831,69 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
           reply_to: None,
         };
       },
+      tibemsMsgType::TIBEMS_MAP_MESSAGE => {
+        let mut header: HashMap<String,String> = HashMap::new();
+        let buf_vec:Vec<i8> = vec![0; 0];
+        let buf_ref: *const std::os::raw::c_char = buf_vec.as_ptr();
+        let status = tibco_ems_sys::tibemsMsg_GetMessageID(msg_pointer, &buf_ref);
+        match status {
+          tibems_status::TIBEMS_OK => trace!("tibemsMsg_GetMessageID: {:?}",status),
+          _ => error!("tibemsMsg_GetMessageID: {:?}",status),
+        }
+        let message_id = CStr::from_ptr(buf_ref).to_str().unwrap();
+        header.insert("MessageID".to_string(),message_id.to_string());
+        let mut names_pointer: usize = 0;
+        let status = tibco_ems_sys::tibemsMapMsg_GetMapNames(msg_pointer, &mut names_pointer);
+        match status {
+          tibems_status::TIBEMS_OK => trace!("tibemsMapMsg_GetMapNames: {:?}",status),
+          _ => error!("tibemsMapMsg_GetMapNames: {:?}",status),
+        }
+        let mut body_entries: Vec<TypedEntry> = vec![];
+        loop {
+          let buf_vec:Vec<i8> = vec![0; 0];
+          let buf_ref: *const std::os::raw::c_char = buf_vec.as_ptr();
+          let status = tibco_ems_sys::tibemsMsgEnum_GetNextName(names_pointer, &buf_ref);
+          match status {
+            tibems_status::TIBEMS_OK =>{
+              let header_name = CStr::from_ptr(buf_ref).to_str().unwrap();
+              let mut val_buf_vec:Vec<i8> = vec![0; 0];
+              let mut val_buf_ref: *mut std::os::raw::c_char = val_buf_vec.as_mut_ptr();
+              let status = tibco_ems_sys::tibemsMapMsg_GetString(msg_pointer, buf_ref, &mut val_buf_ref);
+              match status {
+                tibems_status::TIBEMS_OK => trace!("tibemsMapMsg_GetString: {:?}",status),
+                _ => error!("tibemsMapMsg_GetString: {:?}",status),
+              }
+              let header_value = CStr::from_ptr(val_buf_ref).to_str().unwrap();
+              body_entries.push(TypedEntry{
+                name: header_name.to_string(),
+                value_type: PropertyType::String,
+                value: header_value.as_bytes().to_vec()
+              })
+            }
+            tibems_status::TIBEMS_NOT_FOUND =>{
+              break;
+            }
+            _ => {
+              println!("tibemsMsgEnum_GetNextName: {:?}",status);
+              break;
+            }
+          }
+        }
+        let status = tibco_ems_sys::tibemsMsgEnum_Destroy(names_pointer);
+        match status {
+          tibems_status::TIBEMS_OK => trace!("tibemsMsgEnum_Destroy: {:?}",status),
+          _ => error!("tibemsMsgEnum_Destroy: {:?}",status),
+        }
+        msg = Message{
+          message_type: MessageType::MapMessage,
+          body_text: None,
+          body_binary: None,
+          body_map: Some(body_entries),
+          header: Some(header),
+          message_pointer: Some(msg_pointer),
+          reply_to: None,
+        };
+      },
       _ => {
         //unknown
         panic!("BodyType {:?} not implemented",msg_type);
@@ -837,7 +911,7 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
       let buf_ref: *const std::os::raw::c_char = buf_vec.as_ptr();
       let status = tibco_ems_sys::tibemsMsgEnum_GetNextName(header_enumeration, &buf_ref);
       match status {
-        tibco_ems_sys::tibems_status::TIBEMS_OK =>{
+        tibems_status::TIBEMS_OK =>{
           let header_name = CStr::from_ptr(buf_ref).to_str().unwrap();
           let val_buf_vec:Vec<i8> = vec![0; 0];
           let val_buf_ref: *const std::os::raw::c_char = val_buf_vec.as_ptr();
@@ -851,7 +925,7 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
           header.insert(header_name.to_string(),header_value.to_string());
           msg.header=Some(header);
         }
-        tibco_ems_sys::tibems_status::TIBEMS_NOT_FOUND =>{
+        tibems_status::TIBEMS_NOT_FOUND =>{
           break;
         }
         _ => {

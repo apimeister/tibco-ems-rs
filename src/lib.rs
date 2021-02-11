@@ -416,7 +416,7 @@ pub struct TextMessage {
   /// message body
   pub body: String,
   /// message header
-  pub header: Option<HashMap<String,String>>,
+  pub header: Option<HashMap<String,TypedValue>>,
 }
 
 impl From<Message> for TextMessage {
@@ -444,7 +444,7 @@ pub struct BytesMessage {
   /// message body
   pub body: Vec<u8>,
   /// message header
-  pub header: Option<HashMap<String,String>>,
+  pub header: Option<HashMap<String,TypedValue>>,
 }
 
 impl From<Message> for BytesMessage {
@@ -469,24 +469,10 @@ impl From<&Message> for BytesMessage {
 #[allow(dead_code)]
 #[derive(Debug,Clone,Default)]
 pub struct MapMessage {
-  /// message body string properties
-  pub body_string: HashMap<String,String>,
-  /// message body bool properties
-  pub body_bool: HashMap<String,bool>,
-  /// message body binary properties
-  pub body_bytes: HashMap<String,Vec<u8>>,
-  /// message body double properties
-  pub body_double: HashMap<String,f64>,
-  /// message body float properties
-  pub body_float: HashMap<String,f32>,
-  /// message body int properties
-  pub body_int: HashMap<String,i32>,
-  /// message body long properties
-  pub body_long: HashMap<String,i64>,
   /// message body map properties
-  pub body_map: HashMap<String,MapMessage>,
+  pub body: HashMap<String,TypedValue>,
   /// message header
-  pub header: Option<HashMap<String,String>>,
+  pub header: Option<HashMap<String,TypedValue>>,
 }
 
 impl From<Message> for MapMessage {
@@ -500,14 +486,17 @@ impl From<&Message> for MapMessage {
   fn from(msg: &Message) -> Self {
     let mut out_msg: MapMessage = Default::default();
     out_msg.header= msg.header.clone();
-    let map = msg.body_map.clone();
-    for entry in map.unwrap() {
-      match entry.value_type {
+    let map = msg.body_map.clone().unwrap();
+    for (key,val) in map {
+      match val.value_type {
         PropertyType::String => {
-          out_msg.body_string.insert(entry.name, String::from_utf8(entry.value).unwrap());
+          out_msg.body.insert(key, TypedValue{
+            value_type: PropertyType::String,
+            value: val.value,
+          });
         }
         _ => {
-          panic!("missing body type implementation {:?}",entry.value_type);
+          panic!("missing body type implementation {:?}",val.value_type);
         }
       }
     }
@@ -528,20 +517,169 @@ pub struct Message {
   /// message body if type is binary
   body_binary: Option<Vec<u8>>,
   /// message body if type is map
-  body_map: Option<Vec<TypedEntry>>,
+  body_map: Option<HashMap<String, TypedValue>>,
   // message header
-  header: Option<HashMap<String,String>>,
+  header: Option<HashMap<String,TypedValue>>,
   message_pointer: Option<usize>,
 }
 
-/// represents a generic Message which can be transformed into a TextMessage or BytesMessage through From,Into trait.
 #[allow(dead_code)]
 #[derive(Debug,Clone)]
-pub struct TypedEntry{
-  pub name: String,
+pub struct TypedValue{
   pub value_type: PropertyType,
   pub value: Vec<u8>,
 }
+
+impl TypedValue {
+  pub fn bool_value(val: bool) -> TypedValue{
+    match val {
+      true => TypedValue{
+        value_type: PropertyType::Boolean,
+        value: vec![1],
+       },
+      false => TypedValue{
+        value_type: PropertyType::Boolean,
+        value: vec![0],
+      },
+    }
+  }
+  pub fn int_value(val: i32) -> TypedValue{
+    TypedValue{
+      value_type: PropertyType::Integer,
+      value: val.to_ne_bytes().to_vec(),
+    }
+  }
+  pub fn long_value(val: i64) -> TypedValue{
+    TypedValue{
+      value_type: PropertyType::Long,
+      value: val.to_ne_bytes().to_vec(),
+    }
+  }
+  pub fn string_value(val: String) -> TypedValue{
+    TypedValue{
+      value_type: PropertyType::String,
+      value: val.as_bytes().to_vec(),
+    }
+  }
+  pub fn binary_value(val: &[u8]) -> TypedValue{
+    TypedValue{
+      value_type: PropertyType::Binary,
+      value: val.to_vec(),
+    }
+  }
+  pub fn float_value(val: f32) -> TypedValue{
+    TypedValue{
+      value_type: PropertyType::Float,
+      value: val.to_ne_bytes().to_vec(),
+    }
+  }
+  pub fn double_value(val: f64) -> TypedValue{
+    TypedValue{
+      value_type: PropertyType::Double,
+      value: val.to_ne_bytes().to_vec(),
+    }
+  }
+}
+trait GetIntValue {
+  fn int_value(&self) -> Result<i32,Error>;
+}
+
+trait GetLongValue {
+  fn long_value(&self) -> Result<i64,Error>;
+}
+
+trait GetBoolValue {
+  fn bool_value(&self) -> Result<bool,Error>;
+}
+
+trait GetStringValue {
+  fn string_value(&self) -> Result<String,Error>;
+}
+
+trait GetFloatValue {
+  fn float_value(&self) -> Result<f32,Error>;
+}
+
+trait GetDoubleValue {
+  fn double_value(&self) -> Result<f64,Error>;
+}
+
+impl GetIntValue for TypedValue {
+  fn int_value(&self) -> Result<i32,Error>{
+    match self.value_type {
+      PropertyType::Integer => {
+        let (int_bytes, _) = self.value.split_at(std::mem::size_of::<i32>());
+        let value = i32::from_ne_bytes(int_bytes.try_into().unwrap());
+        Ok(value)
+      },
+      _ => Err(Error::new(std::io::ErrorKind::InvalidData, "not an int value")),
+    }
+  }
+}
+
+impl GetLongValue for TypedValue {
+  fn long_value(&self) -> Result<i64,Error>{
+    match self.value_type {
+      PropertyType::Long => {
+        let (long_bytes, _) = self.value.split_at(std::mem::size_of::<i64>());
+        let value = i64::from_ne_bytes(long_bytes.try_into().unwrap());
+        Ok(value)
+      },
+      _ => Err(Error::new(std::io::ErrorKind::InvalidData, "not an long value")),
+    }
+  }
+}
+
+impl GetBoolValue for TypedValue {
+  fn bool_value(&self) -> Result<bool,Error>{
+    match self.value_type {
+      PropertyType::Boolean => {
+        if self.value[0] == 0 {
+          return Ok(false)
+        } else {
+          return Ok(true)
+        }
+      },
+      _ => Err(Error::new(std::io::ErrorKind::InvalidData, "not a bool value")),
+    }
+  }
+}
+
+impl GetStringValue for TypedValue {
+  fn string_value(&self) -> Result<String,Error>{
+    match self.value_type {
+      PropertyType::String => Ok(String::from_utf8(self.value.clone()).unwrap()),
+      _ => Err(Error::new(std::io::ErrorKind::InvalidData, "not a string value")),
+    }
+  }
+}
+
+impl GetFloatValue for TypedValue {
+  fn float_value(&self) -> Result<f32,Error>{
+    match self.value_type {
+      PropertyType::Float => {
+        let (float_bytes, _) = self.value.split_at(std::mem::size_of::<f32>());
+        let value = f32::from_ne_bytes(float_bytes.try_into().unwrap());
+        Ok(value)
+      },
+      _ => Err(Error::new(std::io::ErrorKind::InvalidData, "not a float value")),
+    }
+  }
+}
+
+impl GetDoubleValue for TypedValue {
+  fn double_value(&self) -> Result<f64,Error>{
+    match self.value_type {
+      PropertyType::Double => {
+        let (double_bytes, _) = self.value.split_at(std::mem::size_of::<f64>());
+        let value = f64::from_ne_bytes(double_bytes.try_into().unwrap());
+        Ok(value)
+      },
+      _ => Err(Error::new(std::io::ErrorKind::InvalidData, "not a double value")),
+    }
+  }
+}
+
 
 #[allow(dead_code)]
 #[derive(Debug,Clone)]
@@ -586,46 +724,11 @@ impl From<BytesMessage> for Message {
 
 impl From<MapMessage> for Message {
   fn from(msg: MapMessage) -> Self {
-    let mut map: Vec<TypedEntry> = Vec::new();
-    for e in msg.body_bool {
-      let val: u8;
-      if e.1 {
-        val = 1;
-      }else{
-        val = 0;
-      }
-      map.push(TypedEntry{
-        name: e.0,
-        value_type: PropertyType::Boolean,
-        value: vec![val],
-      });
-    }
-    for e in msg.body_string {
-      map.push(TypedEntry{
-        name: e.0,
-        value_type: PropertyType::String,
-        value: e.1.as_bytes().to_vec(),
-      })
-    }
-    for e in msg.body_int {
-      map.push(TypedEntry{
-        name: e.0,
-        value_type: PropertyType::Integer,
-        value: e.1.to_ne_bytes().to_vec(),
-      });
-    }
-    for e in msg.body_long {
-      map.push(TypedEntry{
-        name: e.0,
-        value_type: PropertyType::Long,
-        value: e.1.to_ne_bytes().to_vec(),
-      });
-    }
     Message{
       message_type: MessageType::MapMessage,
       body_text: None,
       body_binary: None,
-      body_map: Some(map),
+      body_map: Some(msg.body),
       header: msg.header.clone(),
       message_pointer: None,
       reply_to: None,
@@ -724,15 +827,16 @@ fn build_message_pointer_from_message(message: &Message) -> usize {
           tibems_status::TIBEMS_OK => trace!("tibemsMapMsg_Create: {:?}",status),
           _ => error!("tibemsMapMsg_Create: {:?}",status),
         }
-        for item in message.body_map.clone().unwrap() {
-          let c_name = CString::new(item.name).unwrap();
-          match item.value_type {
+        for (key,val) in message.body_map.clone().unwrap() {
+          let c_name = CString::new(key).unwrap();
+          match val.value_type {
             PropertyType::Boolean => {
+              let result = val.bool_value().unwrap();
               let val;
-              if item.value[0] == 0 {
-                val = tibems_bool::TIBEMS_FALSE;
-              }else{
+              if result {
                 val = tibems_bool::TIBEMS_TRUE;
+              }else{
+                val = tibems_bool::TIBEMS_FALSE;
               }
               let status = tibco_ems_sys::tibemsMapMsg_SetBoolean(msg, c_name.as_ptr(), val);
               match status {
@@ -741,7 +845,7 @@ fn build_message_pointer_from_message(message: &Message) -> usize {
               }
             },
             PropertyType::String => {
-              let c_value = CString::new(item.value).unwrap();
+              let c_value = CString::new(val.string_value().unwrap()).unwrap();
               let status = tibco_ems_sys::tibemsMapMsg_SetString(msg, c_name.as_ptr(), c_value.as_ptr());
               match status {
                 tibems_status::TIBEMS_OK => trace!("tibemsMapMsg_SetString: {:?}",status),
@@ -749,8 +853,7 @@ fn build_message_pointer_from_message(message: &Message) -> usize {
               }
             },
             PropertyType::Integer => {
-              let (int_bytes, _) = item.value.split_at(std::mem::size_of::<i32>());
-              let value = i32::from_ne_bytes(int_bytes.try_into().unwrap());
+              let value = val.int_value().unwrap();
               let status = tibco_ems_sys::tibemsMapMsg_SetInt(msg, c_name.as_ptr(), value);
               match status {
                 tibems_status::TIBEMS_OK => trace!("tibemsMapMsg_SetInt: {:?}",status),
@@ -758,16 +861,40 @@ fn build_message_pointer_from_message(message: &Message) -> usize {
               }
             },
             PropertyType::Long => {
-              let (long_bytes, _) = item.value.split_at(std::mem::size_of::<i64>());
-              let value = i64::from_ne_bytes(long_bytes.try_into().unwrap());
+              let value = val.long_value().unwrap();
               let status = tibco_ems_sys::tibemsMapMsg_SetLong(msg, c_name.as_ptr(), value);
               match status {
                 tibems_status::TIBEMS_OK => trace!("tibemsMapMsg_SetLong: {:?}",status),
                 _ => error!("tibemsMapMsg_SetLong: {:?}",status),
               }
             },
+            PropertyType::Float => {
+              let value = val.float_value().unwrap();
+              let status = tibco_ems_sys::tibemsMapMsg_SetFloat(msg, c_name.as_ptr(), value);
+              match status {
+                tibems_status::TIBEMS_OK => trace!("tibemsMapMsg_SetFloat: {:?}",status),
+                _ => error!("tibemsMapMsg_SetFloat: {:?}",status),
+              }
+            },
+
+            PropertyType::Double => {
+              let value = val.double_value().unwrap();
+              let status = tibco_ems_sys::tibemsMapMsg_SetDouble(msg, c_name.as_ptr(), value);
+              match status {
+                tibems_status::TIBEMS_OK => trace!("tibemsMapMsg_SetDouble: {:?}",status),
+                _ => error!("tibemsMapMsg_SetDouble: {:?}",status),
+              }
+            },
+            PropertyType::Binary => {
+              //TODO implement
+              // let status = tibco_ems_sys::tibemsMapMsg_SetBytes(message: usize, name: *const c_char, bytes: *mut c_void, bytesSize: u64)Long(msg, c_name.as_ptr(), value);
+              // match status {
+                // tibems_status::TIBEMS_OK => trace!("tibemsMapMsg_SetLong: {:?}",status),
+                // _ => error!("tibemsMapMsg_SetLong: {:?}",status),
+              // }
+            }
             _ => {
-              panic!("missing map message type implementation");
+              panic!("missing map message type implementation for {:?}",val.value_type);
             },
           }
         }
@@ -778,7 +905,7 @@ fn build_message_pointer_from_message(message: &Message) -> usize {
       Some(headers)=>{
         for (key, val) in &headers {
           let c_name = CString::new(key.to_string()).unwrap();
-          let c_val = CString::new(val.to_string()).unwrap();
+          let c_val = CString::new(val.string_value().unwrap()).unwrap();
           let status = tibco_ems_sys::tibemsMsg_SetStringProperty(msg, 
             c_name.as_ptr(), 
             c_val.as_ptr());
@@ -805,7 +932,7 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
     }
     match msg_type {
       tibemsMsgType::TIBEMS_TEXT_MESSAGE => {
-        let mut header: HashMap<String,String> = HashMap::new();
+        let mut header: HashMap<String,TypedValue> = HashMap::new();
         let buf_vec:Vec<i8> = vec![0; 0];
         let buf_ref: *const std::os::raw::c_char = buf_vec.as_ptr();
         let status = tibco_ems_sys::tibemsTextMsg_GetText(msg_pointer, & buf_ref);
@@ -820,7 +947,10 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
           _ => error!("tibemsMsg_GetMessageID: {:?}",status),
         }
         let message_id = CStr::from_ptr(buf_ref).to_str().unwrap();
-        header.insert("MessageID".to_string(),message_id.to_string());
+        header.insert("MessageID".to_string(),TypedValue{
+          value_type: PropertyType::String,
+          value: message_id.to_string().as_bytes().to_vec()
+        });
         msg = Message{
           message_type: MessageType::TextMessage,
           body_text: Some(content.to_string()),
@@ -832,7 +962,7 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
         };
       },
       tibemsMsgType::TIBEMS_MAP_MESSAGE => {
-        let mut header: HashMap<String,String> = HashMap::new();
+        let mut header: HashMap<String, TypedValue> = HashMap::new();
         let buf_vec:Vec<i8> = vec![0; 0];
         let buf_ref: *const std::os::raw::c_char = buf_vec.as_ptr();
         let status = tibco_ems_sys::tibemsMsg_GetMessageID(msg_pointer, &buf_ref);
@@ -841,14 +971,17 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
           _ => error!("tibemsMsg_GetMessageID: {:?}",status),
         }
         let message_id = CStr::from_ptr(buf_ref).to_str().unwrap();
-        header.insert("MessageID".to_string(),message_id.to_string());
+        header.insert("MessageID".to_string(),TypedValue{
+          value_type: PropertyType::String,
+          value: message_id.to_string().as_bytes().to_vec(),
+        });
         let mut names_pointer: usize = 0;
         let status = tibco_ems_sys::tibemsMapMsg_GetMapNames(msg_pointer, &mut names_pointer);
         match status {
           tibems_status::TIBEMS_OK => trace!("tibemsMapMsg_GetMapNames: {:?}",status),
           _ => error!("tibemsMapMsg_GetMapNames: {:?}",status),
         }
-        let mut body_entries: Vec<TypedEntry> = vec![];
+        let mut body_entries: HashMap<String, TypedValue> = HashMap::new();
         loop {
           let buf_vec:Vec<i8> = vec![0; 0];
           let buf_ref: *const std::os::raw::c_char = buf_vec.as_ptr();
@@ -864,11 +997,10 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
                 _ => error!("tibemsMapMsg_GetString: {:?}",status),
               }
               let header_value = CStr::from_ptr(val_buf_ref).to_str().unwrap();
-              body_entries.push(TypedEntry{
-                name: header_name.to_string(),
+              body_entries.insert(header_name.to_string(),TypedValue{
                 value_type: PropertyType::String,
                 value: header_value.as_bytes().to_vec()
-              })
+              });
             }
             tibems_status::TIBEMS_NOT_FOUND =>{
               break;
@@ -922,7 +1054,10 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
           }
           let header_value = CStr::from_ptr(val_buf_ref).to_str().unwrap();
           let mut header = msg.header.clone().unwrap();
-          header.insert(header_name.to_string(),header_value.to_string());
+          header.insert(header_name.to_string(),TypedValue{
+            value_type: PropertyType::String,
+            value: header_value.to_string().as_bytes().to_vec(),
+          });
           msg.header=Some(header);
         }
         tibems_status::TIBEMS_NOT_FOUND =>{

@@ -1,6 +1,7 @@
 use tibco_ems::Destination;
 use tibco_ems::DestinationType;
 use tibco_ems::TextMessage;
+use tibco_ems::TypedValue;
 use std::collections::HashMap;
 
 fn main() {
@@ -13,8 +14,8 @@ fn main() {
     let session = connection.session().unwrap();
 
     let mut header = HashMap::new();
-    header.insert("CUSTOM_HEADER_1".to_string(), "VALUE_1".to_string());
-    header.insert("CUSTOM_HEADER_2".to_string(), "VALUE_2".to_string());
+    header.insert("CUSTOM_HEADER_1".to_string(), TypedValue::string_value("VALUE_1".to_string()));
+    header.insert("CUSTOM_HEADER_2".to_string(), TypedValue::string_value("VALUE_2".to_string()));
     let msg = TextMessage{body:"hallo welt".to_string(),header: Some(header)};
 
     let destination = Destination{

@@ -905,14 +905,46 @@ fn build_message_pointer_from_message(message: &Message) -> usize {
       Some(headers)=>{
         for (key, val) in &headers {
           let c_name = CString::new(key.to_string()).unwrap();
-          let c_val = CString::new(val.string_value().unwrap()).unwrap();
-          let status = tibco_ems_sys::tibemsMsg_SetStringProperty(msg, 
-            c_name.as_ptr(), 
-            c_val.as_ptr());
-            match status {
-              tibems_status::TIBEMS_OK => trace!("tibemsMsg_SetStringProperty: {:?}",status),
-              _ => error!("tibemsMsg_SetStringProperty: {:?}",status),
+          match val.value_type {
+            PropertyType::String => {
+              let c_val = CString::new(val.string_value().unwrap()).unwrap();
+              let status = tibco_ems_sys::tibemsMsg_SetStringProperty(msg, c_name.as_ptr(), c_val.as_ptr());
+              match status {
+                tibems_status::TIBEMS_OK => trace!("tibemsMsg_SetStringProperty: {:?}",status),
+                _ => error!("tibemsMsg_SetStringProperty: {:?}",status),
+              }    
+            },
+            PropertyType::Boolean => {
+              let mut bool_value = tibems_bool::TIBEMS_FALSE;
+              if val.bool_value().unwrap() {
+                bool_value = tibems_bool::TIBEMS_TRUE;
+              }
+              let status = tibco_ems_sys::tibemsMsg_SetBooleanProperty(msg, c_name.as_ptr(), bool_value);
+              match status {
+                tibems_status::TIBEMS_OK => trace!("tibemsMsg_SetBooleanProperty: {:?}",status),
+                _ => error!("tibemsMsg_SetBooleanProperty: {:?}",status),
+              }
+            },
+            PropertyType::Integer => {
+              let int_val = val.int_value().unwrap();
+              let status = tibco_ems_sys::tibemsMsg_SetIntProperty(msg, c_name.as_ptr(), int_val);
+              match status {
+                tibems_status::TIBEMS_OK => trace!("tibemsMsg_SetIntProperty: {:?}",status),
+                _ => error!("tibemsMsg_SetIntProperty: {:?}",status),
+              }    
+            },
+            PropertyType::Long => {
+              let long_val = val.long_value().unwrap();
+              let status = tibco_ems_sys::tibemsMsg_SetLongProperty(msg, c_name.as_ptr(), long_val);
+              match status {
+                tibems_status::TIBEMS_OK => trace!("tibemsMsg_SetLongProperty: {:?}",status),
+                _ => error!("tibemsMsg_SetLongProperty: {:?}",status),
+              }    
+            },
+            _ => {
+              panic!("missing property type implementation for {:?}",val.value_type);
             }
+          }
         }
       },
       None => {},

@@ -4,7 +4,7 @@ use std::ffi::CString;
 use std::ffi::CStr;
 use std::ffi::c_void;
 use std::collections::HashMap;
-use std::io::Error;
+use std::error::Error;
 use tibco_ems_sys::tibems_status;
 use tibco_ems_sys::tibemsDestinationType;
 use tibco_ems_sys::tibems_bool;
@@ -612,7 +612,7 @@ impl GetIntValue for TypedValue {
         let value = i32::from_ne_bytes(int_bytes.try_into().unwrap());
         Ok(value)
       },
-      _ => Err(Error::new(std::io::ErrorKind::InvalidData, "not an int value")),
+      _ => Err(Error::new(std::error::ErrorKind::InvalidData, "not an int value")),
     }
   }
 }
@@ -625,7 +625,7 @@ impl GetLongValue for TypedValue {
         let value = i64::from_ne_bytes(long_bytes.try_into().unwrap());
         Ok(value)
       },
-      _ => Err(Error::new(std::io::ErrorKind::InvalidData, "not an long value")),
+      _ => Err(Error::new(std::error::ErrorKind::InvalidData, "not an long value")),
     }
   }
 }
@@ -640,7 +640,7 @@ impl GetBoolValue for TypedValue {
           return Ok(true)
         }
       },
-      _ => Err(Error::new(std::io::ErrorKind::InvalidData, "not a bool value")),
+      _ => Err(Error::new(std::error::ErrorKind::InvalidData, "not a bool value")),
     }
   }
 }
@@ -649,7 +649,7 @@ impl GetStringValue for TypedValue {
   fn string_value(&self) -> Result<String,Error>{
     match self.value_type {
       PropertyType::String => Ok(String::from_utf8(self.value.clone()).unwrap()),
-      _ => Err(Error::new(std::io::ErrorKind::InvalidData, "not a string value")),
+      _ => Err(Error::new(std::error::ErrorKind::InvalidData, "not a string value")),
     }
   }
 }
@@ -662,7 +662,7 @@ impl GetFloatValue for TypedValue {
         let value = f32::from_ne_bytes(float_bytes.try_into().unwrap());
         Ok(value)
       },
-      _ => Err(Error::new(std::io::ErrorKind::InvalidData, "not a float value")),
+      _ => Err(Error::new(std::error::ErrorKind::InvalidData, "not a float value")),
     }
   }
 }
@@ -675,7 +675,7 @@ impl GetDoubleValue for TypedValue {
         let value = f64::from_ne_bytes(double_bytes.try_into().unwrap());
         Ok(value)
       },
-      _ => Err(Error::new(std::io::ErrorKind::InvalidData, "not a double value")),
+      _ => Err(Error::new(std::error::ErrorKind::InvalidData, "not a double value")),
     }
   }
 }

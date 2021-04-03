@@ -64,9 +64,9 @@ pub enum MessageType{
 #[derive(Debug,Copy,Clone)]
 pub enum DestinationType{
   /// destination type queue
-  Queue,
+  Queue = 1,
   /// destination type topic
-  Topic
+  Topic = 2,
 }
 
 /// open a connection to the Tibco EMS server
@@ -532,14 +532,18 @@ pub struct Message {
   message_pointer: Option<usize>,
 }
 
+/// represents a typed value, which is used for message header and message properties
 #[allow(dead_code)]
 #[derive(Debug,Clone,Serialize, Deserialize, PartialEq)]
 pub struct TypedValue{
+  /// type of the property
   pub value_type: PropertyType,
+  /// binary representation of the value
   pub value: Vec<u8>,
 }
 
 impl TypedValue {
+  /// constructs a TypedValue from a boolean
   pub fn bool_value(val: bool) -> TypedValue{
     match val {
       true => TypedValue{
@@ -552,42 +556,49 @@ impl TypedValue {
       },
     }
   }
+  /// constructs a TypedValue from a i32
   pub fn int_value(val: i32) -> TypedValue{
     TypedValue{
       value_type: PropertyType::Integer,
       value: val.to_ne_bytes().to_vec(),
     }
   }
+  /// constructs a TypedValue from a i64
   pub fn long_value(val: i64) -> TypedValue{
     TypedValue{
       value_type: PropertyType::Long,
       value: val.to_ne_bytes().to_vec(),
     }
   }
+  /// constructs a TypedValue from a String
   pub fn string_value(val: String) -> TypedValue{
     TypedValue{
       value_type: PropertyType::String,
       value: val.as_bytes().to_vec(),
     }
   }
+  /// constructs a TypedValue from a &[u8]
   pub fn binary_value(val: &[u8]) -> TypedValue{
     TypedValue{
       value_type: PropertyType::Binary,
       value: val.to_vec(),
     }
   }
+  /// constructs a TypedValue from a f32
   pub fn float_value(val: f32) -> TypedValue{
     TypedValue{
       value_type: PropertyType::Float,
       value: val.to_ne_bytes().to_vec(),
     }
   }
+  /// constructs a TypedValue from a f64
   pub fn double_value(val: f64) -> TypedValue{
     TypedValue{
       value_type: PropertyType::Double,
       value: val.to_ne_bytes().to_vec(),
     }
   }
+  /// constructs a TypedValue from a MapMessage
   pub fn map_value(val: MapMessage) -> TypedValue{
     TypedValue{
       value_type: PropertyType::Map,
@@ -595,31 +606,46 @@ impl TypedValue {
     }
   }
 }
+
+/// Trait to retrieve a i32 value
 pub trait GetIntValue {
+  /// retrieve typed value
   fn int_value(&self) -> Result<i32,Error>;
 }
 
+/// Trait to retrieve a i64 value
 pub trait GetLongValue {
+  /// retrieve typed value
   fn long_value(&self) -> Result<i64,Error>;
 }
 
+/// Trait to retrieve a bool value
 pub trait GetBoolValue {
+  /// retrieve typed value
   fn bool_value(&self) -> Result<bool,Error>;
 }
 
+/// Trait to retrieve a String value
 pub trait GetStringValue {
+  /// retrieve typed value
   fn string_value(&self) -> Result<String,Error>;
 }
 
+/// Trait to retrieve a f32 value
 pub trait GetFloatValue {
+  /// retrieve typed value
   fn float_value(&self) -> Result<f32,Error>;
 }
 
+/// Trait to retrieve a f64 value
 pub trait GetDoubleValue {
+  /// retrieve typed value
   fn double_value(&self) -> Result<f64,Error>;
 }
 
+/// Trait to retrieve a MapMessage value
 pub trait GetMapValue {
+  /// retrieve typed value
   fn map_value(&self) -> Result<MapMessage,Error>;
 }
 
@@ -711,16 +737,25 @@ impl GetMapValue for TypedValue {
   }
 }
 
+/// Type of a property value
 #[allow(dead_code)]
 #[derive(Debug,Clone,Serialize, Deserialize, PartialEq)]
 pub enum PropertyType{
+  /// represents a String Value
   String,
+  /// represents a integer Value
   Integer,
+  /// represents a long Value
   Long,
+  /// represents a float Value
   Float,
+  /// represents a double Value
   Double,
+  /// represents a binary Value
   Binary,
+  /// represents a MapMessage Value
   Map,
+  /// represents a boolean Value
   Boolean,
 }
 

@@ -11,6 +11,9 @@ use tibco_ems_sys::tibems_bool;
 use tibco_ems_sys::tibemsMsgType;
 use log::{trace, error};
 use std::convert::TryInto;
+use serde::{Serialize, Deserialize};
+
+pub mod admin;
 
 /// holds the native Connection pointer
 #[allow(dead_code)]
@@ -467,7 +470,7 @@ impl From<&Message> for BytesMessage {
 
 /// represents a Map Message which can be transformed into Message through From,Into trait.
 #[allow(dead_code)]
-#[derive(Debug,Clone,Default)]
+#[derive(Debug,Clone,Default,Serialize, Deserialize, PartialEq)]
 pub struct MapMessage {
   /// message body map properties
   pub body: HashMap<String,TypedValue>,
@@ -494,7 +497,13 @@ impl From<&Message> for MapMessage {
             value_type: PropertyType::String,
             value: val.value,
           });
-        }
+        },
+        PropertyType::Map => {
+          out_msg.body.insert(key, TypedValue{
+            value_type: PropertyType::Map,
+            value: val.value,
+          });
+        },
         _ => {
           panic!("missing body type implementation {:?}",val.value_type);
         }
@@ -524,7 +533,7 @@ pub struct Message {
 }
 
 #[allow(dead_code)]
-#[derive(Debug,Clone)]
+#[derive(Debug,Clone,Serialize, Deserialize, PartialEq)]
 pub struct TypedValue{
   pub value_type: PropertyType,
   pub value: Vec<u8>,
@@ -579,6 +588,12 @@ impl TypedValue {
       value: val.to_ne_bytes().to_vec(),
     }
   }
+  pub fn map_value(val: MapMessage) -> TypedValue{
+    TypedValue{
+      value_type: PropertyType::Map,
+      value: bincode::serialize(&val).unwrap(),
+    }
+  }
 }
 pub trait GetIntValue {
   fn int_value(&self) -> Result<i32,Error>;
@@ -602,6 +617,10 @@ pub trait GetFloatValue {
 
 pub trait GetDoubleValue {
   fn double_value(&self) -> Result<f64,Error>;
+}
+
+pub trait GetMapValue {
+  fn map_value(&self) -> Result<MapMessage,Error>;
 }
 
 impl GetIntValue for TypedValue {
@@ -680,9 +699,20 @@ impl GetDoubleValue for TypedValue {
   }
 }
 
+impl GetMapValue for TypedValue {
+  fn map_value(&self) -> Result<MapMessage,Error>{
+    match self.value_type {
+      PropertyType::Map => {
+        let value = bincode::deserialize(&self.value).unwrap();
+        Ok(value)
+      },
+      _ => Err(Error::new(std::io::ErrorKind::InvalidData, "not a map value")),
+    }
+  }
+}
 
 #[allow(dead_code)]
-#[derive(Debug,Clone)]
+#[derive(Debug,Clone,Serialize, Deserialize, PartialEq)]
 pub enum PropertyType{
   String,
   Integer,
@@ -1002,12 +1032,16 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
           tibems_status::TIBEMS_OK => trace!("tibemsMsg_GetMessageID: {:?}",status),
           _ => error!("tibemsMsg_GetMessageID: {:?}",status),
         }
-        let message_id = CStr::from_ptr(buf_ref).to_str().unwrap();
-        header.insert("MessageID".to_string(),TypedValue{
-          value_type: PropertyType::String,
-          value: message_id.to_string().as_bytes().to_vec(),
-        });
+        //admin messages do not have a message id
+        if buf_vec.len() > 0 {
+          let message_id = CStr::from_ptr(buf_ref).to_str().unwrap();
+          header.insert("MessageID".to_string(),TypedValue{
+            value_type: PropertyType::String,
+            value: message_id.to_string().as_bytes().to_vec(),
+          });  
+        }
         let mut names_pointer: usize = 0;
+        trace!("tibemsMapMsg_GetMapNames");
         let status = tibco_ems_sys::tibemsMapMsg_GetMapNames(msg_pointer, &mut names_pointer);
         match status {
           tibems_status::TIBEMS_OK => trace!("tibemsMapMsg_GetMapNames: {:?}",status),
@@ -1025,14 +1059,33 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
               let mut val_buf_ref: *mut std::os::raw::c_char = val_buf_vec.as_mut_ptr();
               let status = tibco_ems_sys::tibemsMapMsg_GetString(msg_pointer, buf_ref, &mut val_buf_ref);
               match status {
-                tibems_status::TIBEMS_OK => trace!("tibemsMapMsg_GetString: {:?}",status),
+                tibems_status::TIBEMS_OK =>{
+                  trace!("tibemsMapMsg_GetString: {:?}",status);
+                  if !val_buf_ref.is_null() {
+                    let header_value = CStr::from_ptr(val_buf_ref).to_str().unwrap();
+                    body_entries.insert(header_name.to_string(),TypedValue{
+                      value_type: PropertyType::String,
+                      value: header_value.as_bytes().to_vec()
+                    });  
+                  }
+                },
+                tibems_status::TIBEMS_CONVERSION_FAILED => {
+                  let mut msg2: usize = 0;
+                  let status = tibco_ems_sys::tibemsMapMsg_GetMapMsg(msg_pointer, buf_ref, &mut msg2);
+                  match status {
+                    tibems_status::TIBEMS_OK => trace!("tibemsMapMsg_GetMapMsg: {:?}",status),
+                    _ => error!("tibemsMapMsg_GetMapMsg: {:?}",status),
+                  }
+                  let raw_message = build_message_from_pointer(msg2);
+                  let header_value: MapMessage = raw_message.into();
+                  body_entries.insert(header_name.to_string(),TypedValue{
+                    value_type: PropertyType::Map,
+                    value: bincode::serialize(&header_value).unwrap(),
+                  });
+                },
                 _ => error!("tibemsMapMsg_GetString: {:?}",status),
               }
-              let header_value = CStr::from_ptr(val_buf_ref).to_str().unwrap();
-              body_entries.insert(header_name.to_string(),TypedValue{
-                value_type: PropertyType::String,
-                value: header_value.as_bytes().to_vec()
-              });
+              
             }
             tibems_status::TIBEMS_NOT_FOUND =>{
               break;

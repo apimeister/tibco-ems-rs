@@ -61,7 +61,7 @@ pub enum MessageType{
 
 /// Type of the destination
 #[allow(dead_code)]
-#[derive(Debug,Copy,Clone)]
+#[derive(Debug,Copy,Clone,Serialize,Deserialize)]
 pub enum DestinationType{
   /// destination type queue
   Queue = 1,

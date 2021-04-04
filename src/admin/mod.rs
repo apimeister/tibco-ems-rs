@@ -12,6 +12,7 @@ use super::GetStringValue;
 use super::Session;
 use std::collections::HashMap;
 use log::{trace, error};
+use serde::{Serialize, Deserialize};
 
 const ADMIN_QUEUE: &str = "$sys.admin";
 
@@ -21,9 +22,29 @@ pub fn connect(url: &str, user: &str, password: &str) -> Result<Connection, Erro
   return super::connect(&admin_url,user,password);
 }
 
-///
-/// Queues
-/// 
+//
+// Queues
+// 
+
+/// holds static queue information
+#[derive(Debug, Clone, Default,Serialize,Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QueueInfo{
+  pub name: String,
+  pub pending_messages: Option<i64>,
+  pub max_messages: Option<i64>,
+  pub max_bytes: Option<i64>,
+  pub overflow_policy: Option<OverflowPolicy>,
+  pub failsafe: Option<bool>,
+  pub secure: Option<bool>,
+  pub global: Option<bool>,
+  pub sender_name: Option<bool>,
+  pub sender_name_enforced: Option<bool>,
+  pub prefetch: Option<i32>,
+  pub expiry_override: Option<i64>,
+  pub redelivery_delay: Option<i64>,
+  pub consumer_count: Option<i32>,
+}
 
 /// lists all queues present on the EMS
 ///
@@ -113,6 +134,7 @@ pub fn list_all_queues(session: &Session) -> Vec<QueueInfo> {
                   None =>{},
                 }
                 let prefetch = q_info.body.get("pf").unwrap().string_value().unwrap();
+                let consumer_count = q_info.body.get("cc").unwrap().string_value().unwrap();
                 let expiry = q_info.body.get("expy").unwrap().string_value().unwrap();
                 let redelivery_delay = q_info.body.get("rdd").unwrap().string_value().unwrap();
                                     
@@ -130,6 +152,7 @@ pub fn list_all_queues(session: &Session) -> Vec<QueueInfo> {
                   prefetch: Some(prefetch.parse::<i32>().unwrap()),
                   expiry_override: Some(expiry.parse::<i64>().unwrap()),
                   redelivery_delay: Some(redelivery_delay.parse::<i64>().unwrap()),
+                  consumer_count: Some(consumer_count.parse::<i32>().unwrap()),
                 };
                 queues.push(queue_info);
               }
@@ -231,9 +254,25 @@ pub fn delete_queue(session: &Session, queue: &str){
   }
 }
 
-///
-/// Topics
-/// 
+//
+// Topics
+// 
+
+/// holds static topic information
+#[derive(Debug, Clone, Default,Serialize,Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TopicInfo{
+  pub name: String,
+  pub expiry_override: Option<i64>,
+  pub global: Option<bool>,
+  pub max_bytes: Option<i64>,
+  pub max_messages: Option<i64>,
+  pub overflow_policy: Option<OverflowPolicy>,
+  pub prefetch: Option<i32>,
+  pub durable_count: Option<i32>,
+  pub subscriber_count: Option<i32>,
+  pub pending_messages: Option<i64>,
+}
 
 /// lists all topics present on the EMS
 ///
@@ -283,6 +322,9 @@ pub fn list_all_topics(session: &Session) -> Vec<TopicInfo> {
                 let expiry = t_info.body.get("expy").unwrap().string_value().unwrap();
                 let max_bytes = t_info.body.get("mb").unwrap().string_value().unwrap();
                 let max_msgs = t_info.body.get("mm").unwrap().string_value().unwrap();
+                let durable_count = t_info.body.get("cd").unwrap().string_value().unwrap();
+                let subscriber_count = t_info.body.get("sc").unwrap().string_value().unwrap();
+                let pending_messages = t_info.body.get("nm").unwrap().string_value().unwrap();
                 let overflow = t_info.body.get("op").unwrap().string_value().unwrap();
                 let overflow_policy: OverflowPolicy;
                 match overflow.as_str() {
@@ -299,7 +341,10 @@ pub fn list_all_topics(session: &Session) -> Vec<TopicInfo> {
                   max_bytes: Some(max_bytes.parse::<i64>().unwrap()),
                   max_messages: Some(max_msgs.parse::<i64>().unwrap()),
                   overflow_policy: Some(overflow_policy),
-                  prefetch: Some(prefetch.parse::<i32>().unwrap()),                
+                  prefetch: Some(prefetch.parse::<i32>().unwrap()),
+                  durable_count: Some(durable_count.parse::<i32>().unwrap()),
+                  subscriber_count: Some(subscriber_count.parse::<i32>().unwrap()),
+                  pending_messages: Some(pending_messages.parse::<i64>().unwrap()),
                 };
                 topics.push(topic_info);
               }
@@ -400,11 +445,12 @@ pub fn delete_topic(session: &Session, topic: &str){
   }
 }
 
-///
-/// Bridges
-/// 
+//
+// Bridges
+// 
 
-fn create_bridge(session: &Session, bridge: &BridgeInfo){
+/// create a bridge
+pub fn create_bridge(session: &Session, bridge: &BridgeInfo){
   //create bridge map-message
   let source_name = bridge.source_name.clone();
   let target_name = bridge.target_name.clone();
@@ -457,7 +503,8 @@ fn create_bridge(session: &Session, bridge: &BridgeInfo){
   }
 }
 
-fn delete_bridge(session: &Session, bridge: &BridgeInfo){
+/// delete a bridge
+pub fn delete_bridge(session: &Session, bridge: &BridgeInfo){
   let source_name = bridge.source_name.clone();
   let target_name = bridge.target_name.clone();
 
@@ -504,38 +551,9 @@ fn delete_bridge(session: &Session, bridge: &BridgeInfo){
   } 
 }
 
-/// holds static queue information
-#[derive(Debug, Clone, Default)]
-pub struct QueueInfo{
-  pub name: String,
-  pub pending_messages: Option<i64>,
-  pub max_messages: Option<i64>,
-  pub max_bytes: Option<i64>,
-  pub overflow_policy: Option<OverflowPolicy>,
-  pub failsafe: Option<bool>,
-  pub secure: Option<bool>,
-  pub global: Option<bool>,
-  pub sender_name: Option<bool>,
-  pub sender_name_enforced: Option<bool>,
-  pub prefetch: Option<i32>,
-  pub expiry_override: Option<i64>,
-  pub redelivery_delay: Option<i64>,
-}
-
-/// holds static topic information
-#[derive(Debug, Clone, Default)]
-pub struct TopicInfo{
-  pub name: String,
-  pub expiry_override: Option<i64>,
-  pub global: Option<bool>,
-  pub max_bytes: Option<i64>,
-  pub max_messages: Option<i64>,
-  pub overflow_policy: Option<OverflowPolicy>,
-  pub prefetch: Option<i32>,
-}
-
 /// holds static bridge information
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BridgeInfo{
   pub source_type: DestinationType,
   pub source_name: String,
@@ -545,7 +563,7 @@ pub struct BridgeInfo{
 }
 
 /// available overflow policies
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum OverflowPolicy{
   /// default overflow policy
   Default = 0,

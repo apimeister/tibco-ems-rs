@@ -30,19 +30,33 @@ pub fn connect(url: &str, user: &str, password: &str) -> Result<Connection, Erro
 #[derive(Debug, Clone, Default,Serialize,Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct QueueInfo{
+  /// name of the queue
   pub name: String,
+  /// pending messages
   pub pending_messages: Option<i64>,
+  /// max allowed messages
   pub max_messages: Option<i64>,
+  /// max size
   pub max_bytes: Option<i64>,
+  /// overflow policy
   pub overflow_policy: Option<OverflowPolicy>,
+  /// failsafe
   pub failsafe: Option<bool>,
+  /// secure
   pub secure: Option<bool>,
+  /// global
   pub global: Option<bool>,
+  /// sender name
   pub sender_name: Option<bool>,
+  /// sender name enforced
   pub sender_name_enforced: Option<bool>,
+  /// prefetch
   pub prefetch: Option<i32>,
+  /// expiration override
   pub expiry_override: Option<i64>,
+  /// redelivery delay
   pub redelivery_delay: Option<i64>,
+  /// count of comsumers
   pub consumer_count: Option<i32>,
 }
 
@@ -262,15 +276,25 @@ pub fn delete_queue(session: &Session, queue: &str){
 #[derive(Debug, Clone, Default,Serialize,Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TopicInfo{
+  /// name of the topic
   pub name: String,
+  /// expiration override
   pub expiry_override: Option<i64>,
+  /// global
   pub global: Option<bool>,
+  /// max size
   pub max_bytes: Option<i64>,
+  /// max number of messages
   pub max_messages: Option<i64>,
+  /// overflow policy
   pub overflow_policy: Option<OverflowPolicy>,
+  /// prefetch
   pub prefetch: Option<i32>,
+  /// count of durables
   pub durable_count: Option<i32>,
+  /// count of subscribers
   pub subscriber_count: Option<i32>,
+  /// count of pending messages
   pub pending_messages: Option<i64>,
 }
 
@@ -555,10 +579,15 @@ pub fn delete_bridge(session: &Session, bridge: &BridgeInfo){
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BridgeInfo{
+  /// type of the bridge source
   pub source_type: DestinationType,
+  /// name of the bridge source
   pub source_name: String,
+  /// type of the bridge target
   pub target_type: DestinationType,
+  /// name of the bridge target
   pub target_name: String,
+  /// selector
   pub selector: Option<String>,
 }
 

@@ -1090,6 +1090,7 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
           match status {
             tibems_status::TIBEMS_OK =>{
               let header_name = CStr::from_ptr(buf_ref).to_str().unwrap();
+              trace!("getting value for property: {}",header_name.to_string());
               let mut val_buf_vec:Vec<i8> = vec![0; 0];
               let mut val_buf_ref: *mut std::os::raw::c_char = val_buf_vec.as_mut_ptr();
               let status = tibco_ems_sys::tibemsMapMsg_GetString(msg_pointer, buf_ref, &mut val_buf_ref);
@@ -1111,7 +1112,8 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
                     tibems_status::TIBEMS_OK => trace!("tibemsMapMsg_GetMapMsg: {:?}",status),
                     _ => error!("tibemsMapMsg_GetMapMsg: {:?}",status),
                   }
-                  let raw_message = build_message_from_pointer(msg2);
+                  let mut raw_message = build_message_from_pointer(msg2);
+                  raw_message.message_pointer = None;
                   let header_value: MapMessage = raw_message.into();
                   body_entries.insert(header_name.to_string(),TypedValue{
                     value_type: PropertyType::Map,

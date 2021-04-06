@@ -19,7 +19,20 @@ const ADMIN_QUEUE: &str = "$sys.admin";
 /// open a connection to the Tibco EMS server for administrative purposes
 pub fn connect(url: &str, user: &str, password: &str) -> Result<Connection, Error> {
   let admin_url = format!("<$admin>:{}",url);
-  return super::connect(&admin_url,user,password);
+  let conn =  super::connect(&admin_url,user,password).unwrap();
+  // check connection for active server
+  let session = conn.session().unwrap();
+  let state = get_server_state(&session);
+  match state {
+    ServerState::Active => Ok(conn),
+    ServerState::Standby =>{
+      let parts = url.split(',').collect::<Vec<&str>>();
+      let url2 = parts.get(1).unwrap();
+      let admin_url = format!("<$admin>:{}",url2);
+      let conn =  super::connect(&admin_url,user,password);
+      conn
+    }
+  }
 }
 
 //
@@ -575,6 +588,60 @@ pub fn delete_bridge(session: &Session, bridge: &BridgeInfo){
   } 
 }
 
+//
+// Server
+//
+
+/// get server state
+///
+/// the underlying connection must be an admin connection created through the tibco_ems::admin::connect() function.
+pub fn get_server_state(session: &Session) -> ServerState {
+  const TIMEOUT: i64 = 60000;
+  let mut msg: MapMessage = Default::default();
+  
+  //header
+  let mut header: HashMap<String,TypedValue> = HashMap::new();
+  //actual boolean
+  header.insert("code".to_string(),TypedValue::int_value(AdminCommands::GetStateInfo as i32));
+  header.insert("save".to_string(),TypedValue::bool_value(true));
+  header.insert("arseq".to_string(),TypedValue::int_value(1));
+  msg.header = Some(header);
+
+  let dest = Destination{
+    destination_type: DestinationType::Queue,
+    destination_name: ADMIN_QUEUE.to_string(),
+  };
+  let query_result = session.request_reply(dest, msg.into(), TIMEOUT);
+  match query_result{
+    Ok(response) =>{
+      match response{
+        Some(resp)=>{
+          match resp.message_type {
+            MessageType::MapMessage => {
+              //got response message
+              let map_message: MapMessage = resp.into();
+              let state_str = map_message.body.get("state").unwrap().string_value().unwrap();
+              if state_str == "3"{
+                return ServerState::Standby;
+              }else{
+                return ServerState::Active;
+              }
+            },
+            _ =>{
+              println!("unkown response from queue information request")
+            }
+          }
+        },
+        None=>{},
+      }
+    },
+    Err(err) =>{
+      println!("something went wronge retrieving queue information: {}",err);
+    }
+  }
+  return ServerState::Active;
+}
+
 /// holds static bridge information
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -611,8 +678,21 @@ pub enum AdminCommands{
   CreateDestination = 18,
   /// list destinations
   ListDestination = 19,
+  /// get server info
+  GetServerInfo = 120,
+  /// get state info
+  GetStateInfo = 127,
   /// create a bridge
   CreateBridge = 220,
   /// delete a bridge
   DeleteBrdige = 221,
+}
+
+/// server states
+#[derive(Debug,Clone)]
+pub enum ServerState{
+  // server is standby
+  Standby = 3,
+  // server is active
+  Active = 4,
 }

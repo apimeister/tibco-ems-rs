@@ -145,6 +145,22 @@ impl Connection {
     }
     Ok(session)
   }
+  /// get active url from a ft connection
+  /// this is only required for admin connections, 
+  /// normal connections automatically choose the active server
+  pub fn get_active_url(&self) -> Result<String,Error> {
+    unsafe{
+      let buf_vec:Vec<i8> = vec![0; 0];
+      let buf_ref: *const std::os::raw::c_char = buf_vec.as_ptr();
+      let status = tibco_ems_sys::tibemsConnection_GetActiveURL(self.pointer, &buf_ref);
+      match status {
+        tibems_status::TIBEMS_OK => trace!("tibemsConnection_GetActiveURL: {:?}",status),
+        _ => error!("tibemsConnection_GetActiveURL: {:?}",status),
+      }
+      let url = CStr::from_ptr(buf_ref).to_str().unwrap();
+      return Ok(url.to_string());
+    }
+  }
 }
 
 //

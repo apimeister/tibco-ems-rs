@@ -19,19 +19,16 @@ const ADMIN_QUEUE: &str = "$sys.admin";
 /// open a connection to the Tibco EMS server for administrative purposes
 pub fn connect(url: &str, user: &str, password: &str) -> Result<Connection, Error> {
   let admin_url = format!("<$admin>:{}",url);
-  let conn =  super::connect(&admin_url,user,password).unwrap();
-  // check connection for active server
-  let session = conn.session().unwrap();
-  let state = get_server_state(&session);
-  match state {
-    ServerState::Active => Ok(conn),
-    ServerState::Standby =>{
-      let parts = url.split(',').collect::<Vec<&str>>();
-      let url2 = parts.get(1).unwrap();
-      let admin_url = format!("<$admin>:{}",url2);
-      let conn =  super::connect(&admin_url,user,password);
-      conn
-    }
+  let conn =  super::connect(&admin_url,user,password);
+  match conn {
+    Ok(conn)=>{
+      //check connection for active server
+      let active_url = conn.get_active_url().unwrap();
+      let admin_active_url = format!("<$admin>:{}",active_url);
+      let conn2 =  super::connect(&admin_active_url,user,password);
+      conn2
+    },
+    Err(err)=> Err(err)
   }
 }
 

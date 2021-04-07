@@ -18,8 +18,7 @@ const ADMIN_QUEUE: &str = "$sys.admin";
 
 /// open a connection to the Tibco EMS server for administrative purposes
 pub fn connect(url: &str, user: &str, password: &str) -> Result<Connection, Error> {
-  let admin_url = format!("<$admin>:{}",url);
-  let conn =  super::connect(&admin_url,user,password);
+  let conn =  super::connect(url,user,password);
   match conn {
     Ok(conn)=>{
       //check connection for active server

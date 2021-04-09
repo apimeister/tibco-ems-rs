@@ -2,6 +2,7 @@ use tibco_ems::Destination;
 use tibco_ems::DestinationType;
 use tibco_ems::{TextMessage, BytesMessage, MapMessage};
 use tibco_ems::MessageType;
+use tibco_ems::GetStringValue;
 
 fn main() {
   let url = "tcp://localhost:7222";
@@ -30,6 +31,13 @@ fn main() {
                 println!("received text message");
                 let text_message = TextMessage::from(message);
                 println!("header: {:?}",text_message.header);
+                //access single header value
+                let header = text_message.header.clone().unwrap();
+                if header.contains_key("CUSTOM_HEADER_1") {
+                  let typed_header = header.get("CUSTOM_HEADER_1").unwrap();
+                  let header_value = typed_header.string_value().unwrap();
+                  println!("CUSTOM_HEADER_1: {}",header_value);
+                }
               },
               MessageType::BytesMessage =>{
                 println!("received bytes message");

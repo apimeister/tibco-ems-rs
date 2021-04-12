@@ -413,6 +413,12 @@ impl Session {
         _ => error!("tibemsMsgConsumer_ReceiveTimeout: {:?}",status),
       }
       let result = build_message_from_pointer(reply_message);
+      //close consumer
+      let status = tibco_ems_sys::tibemsMsgConsumer_Close(consumer_pointer);
+      match status {
+        tibems_status::TIBEMS_OK => trace!("tibemsMsgConsumer_Close: {:?}",status),
+        _ => error!("tibemsMsgConsumer_Close: {:?}",status),
+      }
       return Ok(Some(result));
     }
   }

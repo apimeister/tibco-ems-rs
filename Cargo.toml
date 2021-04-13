@@ -10,7 +10,7 @@ description = "A high level API for the Tibco EMS."
 
 [dependencies]
 log = "0.4"
-tibco_ems-sys = "0.1.12"
+tibco_ems-sys = "0.1.13"
 serde = { version = "1", features = ["derive"] }
 bincode = "1"
 

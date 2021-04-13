@@ -396,26 +396,6 @@ impl Session {
         tibems_status::TIBEMS_OK => trace!("tibemsDestination_Destroy: {:?}",status),
         _ => error!("tibemsDestination_Destroy: {:?}",status),
       }
-      
-      match destination.destination_type {
-        DestinationType::Queue =>{
-          //destroy reply_to_queue
-          let status = tibco_ems_sys::tibemsSession_DeleteTemporaryQueue(reply_dest);
-          match status {
-            tibems_status::TIBEMS_OK => trace!("tibemsSession_DeleteTemporaryQueue: {:?}",status),
-            _ => error!("tibemsSession_DeleteTemporaryQueue: {:?}",status),
-          }
-        },
-        DestinationType::Topic =>{
-          //destroy reply_to_queue
-          let status = tibco_ems_sys::tibemsSession_DeleteTemporaryTopic(reply_dest);
-          match status {
-            tibems_status::TIBEMS_OK => trace!("tibemsSession_DeleteTemporaryTopic: {:?}",status),
-            _ => error!("tibemsSession_DeleteTemporaryTopic: {:?}",status),
-          }
-        }
-      }
-
       //open consumer
       let mut consumer_pointer: usize = 0;
       let status = tibco_ems_sys::tibemsSession_CreateConsumer(self.pointer, &mut consumer_pointer,reply_dest, std::ptr::null(), tibco_ems_sys::tibems_bool::TIBEMS_TRUE);
@@ -438,6 +418,25 @@ impl Session {
       match status {
         tibems_status::TIBEMS_OK => trace!("tibemsMsgConsumer_Close: {:?}",status),
         _ => error!("tibemsMsgConsumer_Close: {:?}",status),
+      }
+      //destroy temporary destination
+      match destination.destination_type {
+        DestinationType::Queue =>{
+          //destroy reply_to_queue
+          let status = tibco_ems_sys::tibemsSession_DeleteTemporaryQueue(self.pointer, reply_dest);
+          match status {
+            tibems_status::TIBEMS_OK => trace!("tibemsSession_DeleteTemporaryQueue: {:?}",status),
+            _ => error!("tibemsSession_DeleteTemporaryQueue: {:?}",status),
+          }
+        },
+        DestinationType::Topic =>{
+          //destroy reply_to_queue
+          let status = tibco_ems_sys::tibemsSession_DeleteTemporaryTopic(self.pointer, reply_dest);
+          match status {
+            tibems_status::TIBEMS_OK => trace!("tibemsSession_DeleteTemporaryTopic: {:?}",status),
+            _ => error!("tibemsSession_DeleteTemporaryTopic: {:?}",status),
+          }
+        }
       }
       return Ok(Some(result));
     }

@@ -1304,3 +1304,21 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
   }
   msg
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn test_connection_failure() -> Result<(), String>{
+    let result = connect("tcp://example.org:7222", "admin", "admin");
+    match result{
+      Ok(_val) => {
+        return Err("no error was returned".to_string());
+      },
+      Err(_err) => {
+        return Ok(());
+      },
+    }
+  }
+}

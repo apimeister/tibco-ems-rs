@@ -5,6 +5,7 @@ use std::ffi::CStr;
 use std::ffi::c_void;
 use std::collections::HashMap;
 use std::io::Error;
+use std::io::ErrorKind;
 use tibco_ems_sys::tibems_status;
 use tibco_ems_sys::tibemsDestinationType;
 use tibco_ems_sys::tibems_bool;
@@ -79,20 +80,29 @@ pub fn connect(url: &str, user: &str, password: &str) -> Result<Connection, Erro
     let status = tibco_ems_sys::tibemsConnectionFactory_SetServerURL(factory, c_url.as_ptr());
     match status {
       tibems_status::TIBEMS_OK => trace!("tibemsConnectionFactory_SetServerURL: {:?}",status),
-      _ => error!("tibemsConnectionFactory_SetServerURL: {:?}",status),
+      _ => {
+        error!("tibemsConnectionFactory_SetServerURL: {:?}",status);
+        return Err(Error::new(ErrorKind::InvalidData, "cannot set server url"));
+      },
     }
     let c_user = CString::new(user).unwrap();
     let c_password = CString::new(password).unwrap();
     let status = tibco_ems_sys::tibemsConnectionFactory_CreateConnection(factory,&mut connection_pointer,c_user.as_ptr(),c_password.as_ptr());
     match status {
       tibems_status::TIBEMS_OK => trace!("tibemsConnectionFactory_CreateConnection: {:?}",status),
-      _ => error!("tibemsConnectionFactory_CreateConnection: {:?}",status),
+      _ => {
+        error!("tibemsConnectionFactory_CreateConnection: {:?}",status);
+        return Err(Error::new(ErrorKind::NotConnected, "cannot create connection"));
+      },
     }
     conn = Connection{pointer: connection_pointer};
     let status = tibco_ems_sys::tibemsConnection_Start(connection_pointer);
     match status {
       tibems_status::TIBEMS_OK => trace!("tibemsConnection_Start: {:?}",status),
-      _ => error!("tibemsConnection_Start: {:?}",status),
+      _ => {
+        error!("tibemsConnection_Start: {:?}",status);
+        return Err(Error::new(ErrorKind::NotConnected, "cannot start connection"));
+      },
     }
   }
   Ok(conn)
@@ -104,42 +114,54 @@ pub fn connect(url: &str, user: &str, password: &str) -> Result<Connection, Erro
 
 impl Connection {
   /// open a session
-  pub fn session(&self)-> Result<Session,Error> {
+  pub fn session(&self) -> Result<Session, Error> {
     let session: Session;
     unsafe{
       let mut session_pointer:usize = 0;
       let status = tibco_ems_sys::tibemsConnection_CreateSession(self.pointer, &mut session_pointer, tibco_ems_sys::tibems_bool::TIBEMS_FALSE, tibco_ems_sys::tibemsAcknowledgeMode::TIBEMS_AUTO_ACKNOWLEDGE);
       match status {
         tibems_status::TIBEMS_OK => trace!("tibemsConnection_CreateSession: {:?}",status),
-        _ => error!("tibemsConnection_CreateSession: {:?}",status),
+        _ => {
+          error!("tibemsConnection_CreateSession: {:?}",status);
+          return Err(Error::new(ErrorKind::Other, "creating session failed"));
+        },
       }
       let mut producer: usize = 0;
       let dest: usize = 0;
       let status = tibco_ems_sys::tibemsSession_CreateProducer(session_pointer,&mut producer,dest);
       match status {
         tibems_status::TIBEMS_OK => trace!("tibemsSession_CreateProducer: {:?}",status),
-        _ => error!("tibemsSession_CreateProducer: {:?}",status),
+        _ => {
+          error!("tibemsSession_CreateProducer: {:?}",status);
+          return Err(Error::new(ErrorKind::Other, "creating producer failed"));
+        },
       }
       session = Session{pointer: session_pointer, producer_pointer: producer};
     }
     Ok(session)
   }
   /// open a session with transaction support
-  pub fn transacted_session(&self)-> Result<Session,Error> {
+  pub fn transacted_session(&self)-> Result<Session, Error> {
     let session: Session;
     unsafe{
       let mut session_pointer:usize = 0;
       let status = tibco_ems_sys::tibemsConnection_CreateSession(self.pointer, &mut session_pointer, tibco_ems_sys::tibems_bool::TIBEMS_FALSE, tibco_ems_sys::tibemsAcknowledgeMode::TIBEMS_EXPLICIT_CLIENT_ACKNOWLEDGE);
       match status {
         tibems_status::TIBEMS_OK => trace!("tibemsConnection_CreateSession: {:?}",status),
-        _ => error!("tibemsConnection_CreateSession: {:?}",status),
+        _ => {
+          error!("tibemsConnection_CreateSession: {:?}",status);
+          return Err(Error::new(ErrorKind::Other, "creating session failed"));
+        },
       }
       let mut producer: usize = 0;
       let dest: usize = 0;
       let status = tibco_ems_sys::tibemsSession_CreateProducer(session_pointer,&mut producer,dest);
       match status {
         tibems_status::TIBEMS_OK => trace!("tibemsSession_CreateProducer: {:?}",status),
-        _ => error!("tibemsSession_CreateProducer: {:?}",status),
+        _ => {
+          error!("tibemsSession_CreateProducer: {:?}",status);
+          return Err(Error::new(ErrorKind::Other, "creating producer failed"));
+        },
       }
       session = Session{pointer: session_pointer, producer_pointer: producer};
     }
@@ -148,7 +170,7 @@ impl Connection {
   /// get active url from a ft connection
   /// this is only required for admin connections, 
   /// normal connections automatically choose the active server
-  pub fn get_active_url(&self) -> Result<String,Error> {
+  pub fn get_active_url(&self) -> Result<String, Error> {
     unsafe{
       let buf_vec:Vec<i8> = vec![0; 0];
       let buf_ref: *const std::os::raw::c_char = buf_vec.as_ptr();
@@ -172,7 +194,7 @@ impl Consumer {
   /// 
   /// function return after wait time with a Message or None
   /// a wait time of None blocks until a message is available
-  pub fn receive_message(&self, wait_time_ms: Option<i64>) -> Result<Option<Message>,Error> {
+  pub fn receive_message(&self, wait_time_ms: Option<i64>) -> Result<Option<Message>, Error> {
     unsafe{
       let mut msg_pointer:usize = 0;
       match wait_time_ms {
@@ -206,7 +228,7 @@ impl Consumer {
 
 impl Session {
   /// open a message consumer
-  pub fn queue_consumer(&self, destination: Destination, selector: Option<String>)-> Result<Consumer,Error> {
+  pub fn queue_consumer(&self, destination: Destination, selector: Option<String>) -> Result<Consumer, Error> {
     let consumer: Consumer;
     let mut destination_pointer: usize = 0;
     unsafe{
@@ -266,7 +288,7 @@ impl Session {
   }
 
   /// sending a message to a destination (only queues are supported)
-  pub fn send_message(&self, destination: Destination, message: Message) -> Result<(),Error>{
+  pub fn send_message(&self, destination: Destination, message: Message) -> Result<(), Error>{
     let mut dest: usize = 0;
     let mut local_producer: usize = 0;
     unsafe{
@@ -327,7 +349,7 @@ impl Session {
   }
 
   /// request/reply
-  pub fn request_reply(&self, destination: Destination, message: Message, timeout: i64) -> Result<Option<Message>,Error>{
+  pub fn request_reply(&self, destination: Destination, message: Message, timeout: i64) -> Result<Option<Message>, Error>{
     //create temporary destination
     let mut reply_dest: usize = 0;
     let mut dest: usize = 0;
@@ -460,7 +482,7 @@ pub struct TextMessage {
   /// message body
   pub body: String,
   /// message header
-  pub header: Option<HashMap<String,TypedValue>>,
+  pub header: Option<HashMap<String, TypedValue>>,
 }
 
 impl From<Message> for TextMessage {
@@ -488,7 +510,7 @@ pub struct BytesMessage {
   /// message body
   pub body: Vec<u8>,
   /// message header
-  pub header: Option<HashMap<String,TypedValue>>,
+  pub header: Option<HashMap<String, TypedValue>>,
 }
 
 impl From<Message> for BytesMessage {
@@ -514,9 +536,9 @@ impl From<&Message> for BytesMessage {
 #[derive(Debug,Clone,Default,Serialize, Deserialize, PartialEq)]
 pub struct MapMessage {
   /// message body map properties
-  pub body: HashMap<String,TypedValue>,
+  pub body: HashMap<String, TypedValue>,
   /// message header
-  pub header: Option<HashMap<String,TypedValue>>,
+  pub header: Option<HashMap<String, TypedValue>>,
 }
 
 impl From<Message> for MapMessage {
@@ -569,7 +591,7 @@ pub struct Message {
   /// message body if type is map
   body_map: Option<HashMap<String, TypedValue>>,
   // message header
-  header: Option<HashMap<String,TypedValue>>,
+  header: Option<HashMap<String, TypedValue>>,
   message_pointer: Option<usize>,
 }
 
@@ -651,47 +673,47 @@ impl TypedValue {
 /// Trait to retrieve a i32 value
 pub trait GetIntValue {
   /// retrieve typed value
-  fn int_value(&self) -> Result<i32,Error>;
+  fn int_value(&self) -> Result<i32, Error>;
 }
 
 /// Trait to retrieve a i64 value
 pub trait GetLongValue {
   /// retrieve typed value
-  fn long_value(&self) -> Result<i64,Error>;
+  fn long_value(&self) -> Result<i64, Error>;
 }
 
 /// Trait to retrieve a bool value
 pub trait GetBoolValue {
   /// retrieve typed value
-  fn bool_value(&self) -> Result<bool,Error>;
+  fn bool_value(&self) -> Result<bool, Error>;
 }
 
 /// Trait to retrieve a String value
 pub trait GetStringValue {
   /// retrieve typed value
-  fn string_value(&self) -> Result<String,Error>;
+  fn string_value(&self) -> Result<String, Error>;
 }
 
 /// Trait to retrieve a f32 value
 pub trait GetFloatValue {
   /// retrieve typed value
-  fn float_value(&self) -> Result<f32,Error>;
+  fn float_value(&self) -> Result<f32, Error>;
 }
 
 /// Trait to retrieve a f64 value
 pub trait GetDoubleValue {
   /// retrieve typed value
-  fn double_value(&self) -> Result<f64,Error>;
+  fn double_value(&self) -> Result<f64, Error>;
 }
 
 /// Trait to retrieve a MapMessage value
 pub trait GetMapValue {
   /// retrieve typed value
-  fn map_value(&self) -> Result<MapMessage,Error>;
+  fn map_value(&self) -> Result<MapMessage, Error>;
 }
 
 impl GetIntValue for TypedValue {
-  fn int_value(&self) -> Result<i32,Error>{
+  fn int_value(&self) -> Result<i32, Error>{
     match self.value_type {
       PropertyType::Integer => {
         let (int_bytes, _) = self.value.split_at(std::mem::size_of::<i32>());
@@ -704,7 +726,7 @@ impl GetIntValue for TypedValue {
 }
 
 impl GetLongValue for TypedValue {
-  fn long_value(&self) -> Result<i64,Error>{
+  fn long_value(&self) -> Result<i64, Error>{
     match self.value_type {
       PropertyType::Long => {
         let (long_bytes, _) = self.value.split_at(std::mem::size_of::<i64>());
@@ -717,7 +739,7 @@ impl GetLongValue for TypedValue {
 }
 
 impl GetBoolValue for TypedValue {
-  fn bool_value(&self) -> Result<bool,Error>{
+  fn bool_value(&self) -> Result<bool, Error>{
     match self.value_type {
       PropertyType::Boolean => {
         if self.value[0] == 0 {
@@ -732,7 +754,7 @@ impl GetBoolValue for TypedValue {
 }
 
 impl GetStringValue for TypedValue {
-  fn string_value(&self) -> Result<String,Error>{
+  fn string_value(&self) -> Result<String, Error>{
     match self.value_type {
       PropertyType::String => Ok(String::from_utf8(self.value.clone()).unwrap()),
       _ => Err(Error::new(std::io::ErrorKind::InvalidData, "not a string value")),
@@ -741,7 +763,7 @@ impl GetStringValue for TypedValue {
 }
 
 impl GetFloatValue for TypedValue {
-  fn float_value(&self) -> Result<f32,Error>{
+  fn float_value(&self) -> Result<f32, Error>{
     match self.value_type {
       PropertyType::Float => {
         let (float_bytes, _) = self.value.split_at(std::mem::size_of::<f32>());
@@ -754,7 +776,7 @@ impl GetFloatValue for TypedValue {
 }
 
 impl GetDoubleValue for TypedValue {
-  fn double_value(&self) -> Result<f64,Error>{
+  fn double_value(&self) -> Result<f64, Error>{
     match self.value_type {
       PropertyType::Double => {
         let (double_bytes, _) = self.value.split_at(std::mem::size_of::<f64>());
@@ -767,7 +789,7 @@ impl GetDoubleValue for TypedValue {
 }
 
 impl GetMapValue for TypedValue {
-  fn map_value(&self) -> Result<MapMessage,Error>{
+  fn map_value(&self) -> Result<MapMessage, Error>{
     match self.value_type {
       PropertyType::Map => {
         let value = bincode::deserialize(&self.value).unwrap();
@@ -899,7 +921,7 @@ fn build_message_pointer_from_message(message: &Message) -> usize {
   let mut msg: usize = 0;
   unsafe{
     match message.message_type {
-      MessageType::TextMessage =>{
+      MessageType::TextMessage => {
         let status = tibco_ems_sys::tibemsTextMsg_Create(&mut msg);
         match status {
           tibems_status::TIBEMS_OK => trace!("tibemsTextMsg_Create: {:?}",status),
@@ -912,7 +934,7 @@ fn build_message_pointer_from_message(message: &Message) -> usize {
           _ => error!("tibemsTextMsg_SetText: {:?}",status),
         }
       },
-      MessageType::BytesMessage =>{
+      MessageType::BytesMessage => {
         let status = tibco_ems_sys::tibemsBytesMsg_Create(&mut msg);
         match status {
           tibems_status::TIBEMS_OK => trace!("tibemsBytesMsg_Create: {:?}",status),

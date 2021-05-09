@@ -449,7 +449,7 @@ pub fn create_topic(session: &Session, topic: &TopicInfo){
 /// deletes a topic from the EMS
 ///
 /// the underlying connection must be an admin connection created through the tibco_ems::admin::connect() function.
-pub fn delete_topic(session: &Session, topic: &str){
+pub fn delete_topic(session: &Session, topic: &str) {
   trace!("deleting topic {}", topic);
   //create topic map-message
   let mut msg: MapMessage = Default::default();
@@ -483,7 +483,7 @@ pub fn delete_topic(session: &Session, topic: &str){
 // 
 
 /// create a bridge
-pub fn create_bridge(session: &Session, bridge: &BridgeInfo){
+pub fn create_bridge(session: &Session, bridge: &BridgeInfo) {
   //create bridge map-message
   let source_name = bridge.source_name.clone();
   let target_name = bridge.target_name.clone();
@@ -537,7 +537,7 @@ pub fn create_bridge(session: &Session, bridge: &BridgeInfo){
 }
 
 /// delete a bridge
-pub fn delete_bridge(session: &Session, bridge: &BridgeInfo){
+pub fn delete_bridge(session: &Session, bridge: &BridgeInfo) {
   let source_name = bridge.source_name.clone();
   let target_name = bridge.target_name.clone();
 

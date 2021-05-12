@@ -177,7 +177,10 @@ impl Connection {
       let status = tibco_ems_sys::tibemsConnection_GetActiveURL(self.pointer, &buf_ref);
       match status {
         tibems_status::TIBEMS_OK => trace!("tibemsConnection_GetActiveURL: {:?}",status),
-        _ => error!("tibemsConnection_GetActiveURL: {:?}",status),
+        _ => {
+          error!("tibemsConnection_GetActiveURL: {:?}",status);
+          return Err(Error::new(ErrorKind::Other, "failed to retrieve active url"));
+        },
       }
       let url = CStr::from_ptr(buf_ref).to_str().unwrap();
       return Ok(url.to_string());
@@ -202,17 +205,25 @@ impl Consumer {
           let status = tibco_ems_sys::tibemsMsgConsumer_ReceiveTimeout(self.pointer, &mut msg_pointer, time_ms);
           match status {
             tibems_status::TIBEMS_OK => trace!("tibemsMsgConsumer_ReceiveTimeout: {:?}",status),
-            tibems_status::TIBEMS_TIMEOUT =>{
+            tibems_status::TIBEMS_TIMEOUT => {
               return Ok(None);
             },
-            _ => error!("tibemsMsgConsumer_ReceiveTimeout: {:?}",status),
+            _ => {
+              let status_str = format!("{:?}",status);
+              error!("tibemsMsgConsumer_ReceiveTimeout: {}",status_str);
+              return Err(Error::new(ErrorKind::Other, format!("receive message failed: {}",status_str)));
+            },
           }
         },
         None => {
           let status = tibco_ems_sys::tibemsMsgConsumer_Receive(self.pointer, &mut msg_pointer);
           match status {
             tibems_status::TIBEMS_OK => trace!("tibemsMsgConsumer_Receive: {:?}",status),
-            _ => error!("tibemsMsgConsumer_Receive: {:?}",status),
+            _ => {
+              let status_str = format!("{:?}",status);
+              error!("tibemsMsgConsumer_Receive: {}",status_str);
+              return Err(Error::new(ErrorKind::Other, format!("receive message failed: {}",status_str)));
+            },
           }
         },
       }
@@ -239,7 +250,11 @@ impl Session {
           let status = tibco_ems_sys::tibemsDestination_Create(&mut destination_pointer, tibemsDestinationType::TIBEMS_QUEUE, c_destination.as_ptr());
           match status {
             tibems_status::TIBEMS_OK => trace!("tibemsDestination_Create: {:?}",status),
-            _ => error!("tibemsDestination_Create: {:?}",status),
+            _ => {
+              let status_str = format!("{:?}",status);
+              error!("tibemsDestination_Create: {}",status_str);
+              return Err(Error::new(ErrorKind::Other, format!("create destination failed: {}",status_str)));
+            },
           }
         },
         DestinationType::Topic => {
@@ -247,7 +262,11 @@ impl Session {
           let status = tibco_ems_sys::tibemsDestination_Create(&mut destination_pointer, tibemsDestinationType::TIBEMS_TOPIC, c_destination.as_ptr());
           match status {
             tibems_status::TIBEMS_OK => trace!("tibemsDestination_Create: {:?}",status),
-            _ => error!("tibemsDestination_Create: {:?}",status),
+            _ => {
+              let status_str = format!("{:?}",status);
+              error!("tibemsDestination_Create: {}",status_str);
+              return Err(Error::new(ErrorKind::Other, format!("create destination failed: {}",status_str)));
+            },
           }
         }
       }
@@ -261,7 +280,11 @@ impl Session {
       let status = tibco_ems_sys::tibemsSession_CreateConsumer(self.pointer, &mut consumer_pointer,destination_pointer, c_selector.as_ptr(), tibco_ems_sys::tibems_bool::TIBEMS_TRUE);
       match status {
         tibems_status::TIBEMS_OK => trace!("tibemsSession_CreateConsumer: {:?}",status),
-        _ => error!("tibemsSession_CreateConsumer: {:?}",status),
+        _ => {
+          let status_str = format!("{:?}",status);
+          error!("tibemsSession_CreateConsumer: {}",status_str);
+          return Err(Error::new(ErrorKind::Other, format!("create consumer failed: {}",status_str)));
+        },
       }
       consumer = Consumer{pointer: consumer_pointer};
     }
@@ -298,7 +321,11 @@ impl Session {
           let status = tibco_ems_sys::tibemsDestination_Create(&mut dest, tibemsDestinationType::TIBEMS_QUEUE, c_destination.as_ptr());
           match status {
             tibems_status::TIBEMS_OK => trace!("tibemsDestination_Create: {:?}",status),
-            _ => error!("tibemsDestination_Create: {:?}",status),
+            _ => {
+              let status_str = format!("{:?}",status);
+              error!("tibemsDestination_Create: {}",status_str);
+              return Err(Error::new(ErrorKind::Other, format!("create destination failed: {}",status_str)));
+            },
           }
         },
         DestinationType::Topic => {
@@ -306,7 +333,11 @@ impl Session {
           let status = tibco_ems_sys::tibemsDestination_Create(&mut dest, tibemsDestinationType::TIBEMS_TOPIC, c_destination.as_ptr());
           match status {
             tibems_status::TIBEMS_OK => trace!("tibemsDestination_Create: {:?}",status),
-            _ => error!("tibemsDestination_Create: {:?}",status),
+            _ => {
+              let status_str = format!("{:?}",status);
+              error!("tibemsDestination_Create: {}",status_str);
+              return Err(Error::new(ErrorKind::Other, format!("create destination failed: {}",status_str)));
+            },
           }
         }
       }

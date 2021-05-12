@@ -11,7 +11,7 @@ use super::GetMapValue;
 use super::GetStringValue;
 use super::Session;
 use std::collections::HashMap;
-use log::{trace, error};
+use log::{trace, error, warn};
 use serde::{Serialize, Deserialize};
 
 const ADMIN_QUEUE: &str = "$sys.admin";
@@ -23,6 +23,7 @@ pub fn connect(url: &str, user: &str, password: &str) -> Result<Connection, Erro
     Ok(conn)=>{
       //check connection for active server
       let active_url = conn.get_active_url().unwrap();
+      drop(conn);
       let admin_active_url = format!("<$admin>:{}",active_url);
       let conn2 =  super::connect(&admin_active_url,user,password);
       conn2
@@ -181,7 +182,7 @@ pub fn list_all_queues(session: &Session) -> Vec<QueueInfo> {
               }
             },
             _ =>{
-              println!("unkown response from queue information request")
+              warn!("unkown response from queue information request")
             }
           }
         },
@@ -189,7 +190,7 @@ pub fn list_all_queues(session: &Session) -> Vec<QueueInfo> {
       }
     },
     Err(err) =>{
-      println!("something went wronge retrieving queue information: {}",err);
+      error!("something went wronge retrieving queue information: {}",err);
     }
   }
   queues
@@ -383,7 +384,7 @@ pub fn list_all_topics(session: &Session) -> Vec<TopicInfo> {
               }
             },
             _ =>{
-              println!("unkown response from topic information request")
+              warn!("unkown response from topic information request")
             }
           }
         },
@@ -391,7 +392,7 @@ pub fn list_all_topics(session: &Session) -> Vec<TopicInfo> {
       }
     },
     Err(err) =>{
-      println!("something went wronge retrieving topic information: {}",err);
+      error!("something went wrong retrieving topic information: {}",err);
     }
   }
   topics
@@ -624,7 +625,7 @@ pub fn get_server_state(session: &Session) -> ServerState {
               }
             },
             _ =>{
-              println!("unkown response from queue information request")
+              warn!("unkown response from queue information request")
             }
           }
         },
@@ -632,7 +633,7 @@ pub fn get_server_state(session: &Session) -> ServerState {
       }
     },
     Err(err) =>{
-      println!("something went wronge retrieving queue information: {}",err);
+      error!("something went wronge retrieving queue information: {}",err);
     }
   }
   return ServerState::Active;

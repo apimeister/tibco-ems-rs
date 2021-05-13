@@ -68,6 +68,10 @@ pub struct QueueInfo{
   pub redelivery_delay: Option<i64>,
   /// count of comsumers
   pub consumer_count: Option<i32>,
+  /// total count of incoming messages
+  pub incoming_total_count: Option<i64>,
+  /// total count of outgoing messages
+  pub outgoing_total_count: Option<i64>,
 }
 
 /// lists all queues present on the EMS
@@ -161,6 +165,8 @@ pub fn list_all_queues(session: &Session) -> Vec<QueueInfo> {
                 let consumer_count = q_info.body.get("cc").unwrap().string_value().unwrap();
                 let expiry = q_info.body.get("expy").unwrap().string_value().unwrap();
                 let redelivery_delay = q_info.body.get("rdd").unwrap().string_value().unwrap();
+                let in_total_count = q_info.body.get("inct").unwrap().string_value().unwrap();
+                let out_total_count = q_info.body.get("outct").unwrap().string_value().unwrap();
                                     
                 let queue_info = QueueInfo{
                   name: key,
@@ -177,6 +183,8 @@ pub fn list_all_queues(session: &Session) -> Vec<QueueInfo> {
                   expiry_override: Some(expiry.parse::<i64>().unwrap()),
                   redelivery_delay: Some(redelivery_delay.parse::<i64>().unwrap()),
                   consumer_count: Some(consumer_count.parse::<i32>().unwrap()),
+                  incoming_total_count: Some(in_total_count.parse::<i64>().unwrap()),
+                  outgoing_total_count: Some(out_total_count.parse::<i64>().unwrap()),
                 };
                 queues.push(queue_info);
               }
@@ -306,6 +314,10 @@ pub struct TopicInfo{
   pub subscriber_count: Option<i32>,
   /// count of pending messages
   pub pending_messages: Option<i64>,
+  /// total count of incoming messages
+  pub incoming_total_count: Option<i64>,
+  /// total count of outgoing messages
+  pub outgoing_total_count: Option<i64>,  
 }
 
 /// lists all topics present on the EMS
@@ -359,6 +371,8 @@ pub fn list_all_topics(session: &Session) -> Vec<TopicInfo> {
                 let durable_count = t_info.body.get("cd").unwrap().string_value().unwrap();
                 let subscriber_count = t_info.body.get("sc").unwrap().string_value().unwrap();
                 let pending_messages = t_info.body.get("nm").unwrap().string_value().unwrap();
+                let in_total_count = t_info.body.get("inct").unwrap().string_value().unwrap();
+                let out_total_count = t_info.body.get("outct").unwrap().string_value().unwrap();
                 let overflow = t_info.body.get("op").unwrap().string_value().unwrap();
                 let overflow_policy: OverflowPolicy;
                 match overflow.as_str() {
@@ -379,6 +393,8 @@ pub fn list_all_topics(session: &Session) -> Vec<TopicInfo> {
                   durable_count: Some(durable_count.parse::<i32>().unwrap()),
                   subscriber_count: Some(subscriber_count.parse::<i32>().unwrap()),
                   pending_messages: Some(pending_messages.parse::<i64>().unwrap()),
+                  incoming_total_count: Some(in_total_count.parse::<i64>().unwrap()),
+                  outgoing_total_count: Some(out_total_count.parse::<i64>().unwrap()),
                 };
                 topics.push(topic_info);
               }

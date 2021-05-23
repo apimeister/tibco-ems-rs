@@ -3,18 +3,18 @@
 use std::io::Error;
 use super::Connection;
 use super::Destination;
-use super::DestinationType;
 use super::TypedValue;
+use super::Message;
 use super::MapMessage;
-use super::MessageType;
-use super::GetMapValue;
-use super::GetStringValue;
 use super::Session;
 use std::collections::HashMap;
 use log::{trace, error, warn};
 use serde::{Serialize, Deserialize};
+use enum_extract::extract;
 
-const ADMIN_QUEUE: &str = "$sys.admin";
+const ADMIN_QUEUE_NAME: &str = "$sys.admin";
+const DESTINATION_TYPE_QUEUE: i32 = 1;
+const DESTINATION_TYPE_TOPIC: i32 = 2;
 
 /// open a connection to the Tibco EMS server for administrative purposes
 pub fn connect(url: &str, user: &str, password: &str) -> Result<Connection, Error> {
@@ -25,7 +25,7 @@ pub fn connect(url: &str, user: &str, password: &str) -> Result<Connection, Erro
       let active_url = conn.get_active_url().unwrap();
       drop(conn);
       let admin_active_url = format!("<$admin>:{}",active_url);
-      let conn2 =  super::connect(&admin_active_url,user,password);
+      let conn2 = super::connect(&admin_active_url,user,password);
       conn2
     },
     Err(err)=> Err(err)
@@ -81,39 +81,35 @@ pub fn list_all_queues(session: &Session) -> Vec<QueueInfo> {
   let mut queues = Vec::new();
   const TIMEOUT: i64 = 60000;
   let mut msg: MapMessage = Default::default();
-  msg.body.insert("dt".to_string(), TypedValue::int_value(DestinationType::Queue as i32));
-  msg.body.insert("permType".to_string(), TypedValue::int_value(6));
-  msg.body.insert("pattern".to_string(), TypedValue::string_value(">".to_string()));
-  msg.body.insert("ia".to_string(), TypedValue::bool_value(true));
-  msg.body.insert("first".to_string(), TypedValue::int_value(1000));
+  msg.body.insert("dt".to_string(), TypedValue::Integer(DESTINATION_TYPE_QUEUE));
+  msg.body.insert("permType".to_string(), TypedValue::Integer(6));
+  msg.body.insert("pattern".to_string(), TypedValue::String(">".to_string()));
+  msg.body.insert("ia".to_string(), TypedValue::Boolean(true));
+  msg.body.insert("first".to_string(), TypedValue::Integer(1000));
   
   //header
   let mut header: HashMap<String,TypedValue> = HashMap::new();
   //actual boolean
-  header.insert("code".to_string(),TypedValue::int_value(AdminCommands::ListDestination as i32));
-  header.insert("save".to_string(),TypedValue::bool_value(true));
-  header.insert("arseq".to_string(),TypedValue::int_value(1));
+  header.insert("code".to_string(), TypedValue::Integer(AdminCommands::ListDestination as i32));
+  header.insert("save".to_string(), TypedValue::Boolean(true));
+  header.insert("arseq".to_string(), TypedValue::Integer(1));
   msg.header = Some(header);
 
-  let dest = Destination{
-    destination_type: DestinationType::Queue,
-    destination_name: ADMIN_QUEUE.to_string(),
-  };
-  let query_result = session.request_reply(dest, msg.into(), TIMEOUT);
+  let admin_queue = Destination::Queue(ADMIN_QUEUE_NAME.to_string());
+  let query_result = session.request_reply(&admin_queue, msg, TIMEOUT);
   match query_result{
     Ok(response) =>{
       match response{
         Some(resp)=>{
-          match resp.message_type {
-            MessageType::MapMessage => {
+          match &resp {
+            Message::MapMessage(map_message) => {
               //got response message
-              let map_message: MapMessage = resp.into();
-              for (key,val) in map_message.body {
-                let q_info: MapMessage = val.map_value().unwrap();
-                let pending_messages = q_info.body.get("nm").unwrap().string_value().unwrap();
-                let max_bytes = q_info.body.get("mb").unwrap().string_value().unwrap();
-                let max_msgs = q_info.body.get("mm").unwrap().string_value().unwrap();
-                let overflow = q_info.body.get("op").unwrap().string_value().unwrap();
+              for (key,val) in &map_message.body {
+                let q_info: &MapMessage = extract!(TypedValue::Map(_), val).expect("extract inner message");
+                let pending_messages = extract!(TypedValue::String(_), q_info.body.get("nm").unwrap()).expect("extract pending messages");
+                let max_bytes = extract!(TypedValue::String(_), q_info.body.get("mb").unwrap()).expect("extract max bytes");
+                let max_msgs = extract!(TypedValue::String(_), q_info.body.get("mm").unwrap()).expect("extract max messages");
+                let overflow = extract!(TypedValue::String(_), q_info.body.get("op").unwrap()).expect("extract overflow");
                 let overflow_policy: OverflowPolicy;
                 match overflow.as_str() {
                   "0"=> overflow_policy=OverflowPolicy::Default,
@@ -124,7 +120,7 @@ pub fn list_all_queues(session: &Session) -> Vec<QueueInfo> {
                 let mut bool_failsafe = false;
                 match q_info.body.get("failsafe") {
                   Some(val) => {
-                    let failsafe = val.string_value().unwrap();
+                    let failsafe = extract!(TypedValue::String(_), val).expect("extract failsafe");
                     bool_failsafe = failsafe == "1";
                   },
                   None =>{},
@@ -132,7 +128,7 @@ pub fn list_all_queues(session: &Session) -> Vec<QueueInfo> {
                 let mut bool_secure = false;
                 match q_info.body.get("secure") {
                   Some(val) => {
-                    let secure = val.string_value().unwrap();
+                    let secure = extract!(TypedValue::String(_), val).expect("extract secure flag");
                     bool_secure = secure == "1";
                   },
                   None =>{},
@@ -140,7 +136,7 @@ pub fn list_all_queues(session: &Session) -> Vec<QueueInfo> {
                 let mut bool_global = false;
                 match q_info.body.get("global") {
                   Some(val) => {
-                    let global = val.string_value().unwrap();
+                    let global = extract!(TypedValue::String(_), val).expect("extract global flag");
                     bool_global = global == "1";    
                   },
                   None =>{},
@@ -148,7 +144,7 @@ pub fn list_all_queues(session: &Session) -> Vec<QueueInfo> {
                 let mut bool_sender_name = false;
                 match q_info.body.get("sname") {
                   Some(val) => {
-                    let sender_name = val.string_value().unwrap();
+                    let sender_name = extract!(TypedValue::String(_), val).expect("extract sender name");
                     bool_sender_name = sender_name == "1";
                   },
                   None =>{},
@@ -156,20 +152,20 @@ pub fn list_all_queues(session: &Session) -> Vec<QueueInfo> {
                 let mut bool_sn_enforced = false;
                 match q_info.body.get("snameenf") {
                   Some(val) => {
-                    let sn_enforced = val.string_value().unwrap();
+                    let sn_enforced = extract!(TypedValue::String(_), val).expect("extrance sender name enforced");
                     bool_sn_enforced = sn_enforced == "1";    
                   },
                   None =>{},
                 }
-                let prefetch = q_info.body.get("pf").unwrap().string_value().unwrap();
-                let consumer_count = q_info.body.get("cc").unwrap().string_value().unwrap();
-                let expiry = q_info.body.get("expy").unwrap().string_value().unwrap();
-                let redelivery_delay = q_info.body.get("rdd").unwrap().string_value().unwrap();
-                let in_total_count = q_info.body.get("inct").unwrap().string_value().unwrap();
-                let out_total_count = q_info.body.get("outct").unwrap().string_value().unwrap();
+                let prefetch = extract!(TypedValue::String(_), q_info.body.get("pf").unwrap()).expect("queue property");
+                let consumer_count = extract!(TypedValue::String(_), q_info.body.get("cc").unwrap()).expect("queue property");
+                let expiry = extract!(TypedValue::String(_), q_info.body.get("expy").unwrap()).expect("queue property");
+                let redelivery_delay = extract!(TypedValue::String(_), q_info.body.get("rdd").unwrap()).expect("queue property");
+                let in_total_count = extract!(TypedValue::String(_), q_info.body.get("inct").unwrap()).expect("queue property");
+                let out_total_count = extract!(TypedValue::String(_), q_info.body.get("outct").unwrap()).expect("queue property");
                                     
                 let queue_info = QueueInfo{
-                  name: key,
+                  name: key.to_string(),
                   pending_messages: Some(pending_messages.parse::<i64>().unwrap()),
                   max_messages: Some(max_msgs.parse::<i64>().unwrap()),
                   max_bytes: Some(max_bytes.parse::<i64>().unwrap()),
@@ -210,23 +206,23 @@ pub fn list_all_queues(session: &Session) -> Vec<QueueInfo> {
 pub fn create_queue(session: &Session, queue: &QueueInfo){
   //create queue map-message
   let mut msg: MapMessage = Default::default();
-  msg.body.insert("dn".to_string(), TypedValue::string_value(queue.name.clone()));
-  msg.body.insert("dt".to_string(), TypedValue::int_value(DestinationType::Queue as i32));
+  msg.body.insert("dn".to_string(), TypedValue::String(queue.name.clone()));
+  msg.body.insert("dt".to_string(), TypedValue::Integer(DESTINATION_TYPE_QUEUE));
   match queue.max_bytes {
     Some(val) => {
-      msg.body.insert("mb".to_string(), TypedValue::long_value(val));
+      msg.body.insert("mb".to_string(), TypedValue::Long(val));
     },
     _ => {},
   }
   match queue.max_messages {
     Some(val) => {
-      msg.body.insert("mm".to_string(), TypedValue::long_value(val));
+      msg.body.insert("mm".to_string(), TypedValue::Long(val));
     },
     _ => {},
   }
   match queue.global {
     Some(val) => {
-      msg.body.insert("global".to_string(), TypedValue::bool_value(val));
+      msg.body.insert("global".to_string(), TypedValue::Boolean(val));
     },
     _ => {},
   }
@@ -234,18 +230,14 @@ pub fn create_queue(session: &Session, queue: &QueueInfo){
   //header
   let mut header: HashMap<String,TypedValue> = HashMap::new();
   //actual boolean
-  header.insert("JMS_TIBCO_MSG_EXT".to_string(),TypedValue::bool_value(true));
-  header.insert("code".to_string(),TypedValue::int_value(AdminCommands::CreateDestination as i32));
-  header.insert("save".to_string(),TypedValue::bool_value(true));
-  header.insert("arseq".to_string(),TypedValue::int_value(1));
-
+  header.insert("JMS_TIBCO_MSG_EXT".to_string(),TypedValue::Boolean(true));
+  header.insert("code".to_string(),TypedValue::Integer(AdminCommands::CreateDestination as i32));
+  header.insert("save".to_string(),TypedValue::Boolean(true));
+  header.insert("arseq".to_string(),TypedValue::Integer(1));
   msg.header = Some(header);
 
-  let dest = Destination{
-    destination_type: DestinationType::Queue,
-    destination_name: ADMIN_QUEUE.to_string(),
-  };
-  let result = session.send_message(dest, msg.into());
+  let admin_queue = Destination::Queue(ADMIN_QUEUE_NAME.to_string());
+  let result = session.send_message(&admin_queue, msg);
   match result {
     Ok(_) => {},
     Err(err) => {
@@ -261,23 +253,19 @@ pub fn delete_queue(session: &Session, queue: &str){
   trace!("deleting queue {}", queue);
   //create queue map-message
   let mut msg: MapMessage = Default::default();
-  msg.body.insert("dn".to_string(), TypedValue::string_value(queue.to_string()));
-  msg.body.insert("dt".to_string(), TypedValue::int_value(DestinationType::Queue as i32));
+  msg.body.insert("dn".to_string(), TypedValue::String(queue.to_string()));
+  msg.body.insert("dt".to_string(), TypedValue::Integer(DESTINATION_TYPE_QUEUE));
   //header
   let mut header: HashMap<String,TypedValue> = HashMap::new();
   //actual boolean
-  header.insert("JMS_TIBCO_MSG_EXT".to_string(),TypedValue::bool_value(true));
-  header.insert("code".to_string(),TypedValue::int_value(AdminCommands::DeleteDestination as i32));
-  header.insert("save".to_string(),TypedValue::bool_value(true));
-  header.insert("arseq".to_string(),TypedValue::int_value(1));
-
+  header.insert("JMS_TIBCO_MSG_EXT".to_string(),TypedValue::Boolean(true));
+  header.insert("code".to_string(),TypedValue::Integer(AdminCommands::DeleteDestination as i32));
+  header.insert("save".to_string(),TypedValue::Boolean(true));
+  header.insert("arseq".to_string(),TypedValue::Integer(1));
   msg.header = Some(header);
 
-  let dest = Destination{
-    destination_type: DestinationType::Queue,
-    destination_name: ADMIN_QUEUE.to_string(),
-  };
-  let result = session.send_message(dest, msg.into());
+  let admin_queue = Destination::Queue(ADMIN_QUEUE_NAME.to_string());
+  let result = session.send_message(&admin_queue, msg);
   match result {
     Ok(_) => {},
     Err(err) => {
@@ -327,53 +315,49 @@ pub fn list_all_topics(session: &Session) -> Vec<TopicInfo> {
   let mut topics = Vec::new();
   const TIMEOUT: i64 = 60000;
   let mut msg: MapMessage = Default::default();
-  msg.body.insert("dt".to_string(), TypedValue::int_value(DestinationType::Topic as i32));
-  msg.body.insert("permType".to_string(), TypedValue::int_value(6));
-  msg.body.insert("pattern".to_string(), TypedValue::string_value(">".to_string()));
-  msg.body.insert("ia".to_string(), TypedValue::bool_value(true));
-  msg.body.insert("first".to_string(), TypedValue::int_value(1000));
+  msg.body.insert("dt".to_string(), TypedValue::Integer(DESTINATION_TYPE_TOPIC));
+  msg.body.insert("permType".to_string(), TypedValue::Integer(6));
+  msg.body.insert("pattern".to_string(), TypedValue::String(">".to_string()));
+  msg.body.insert("ia".to_string(), TypedValue::Boolean(true));
+  msg.body.insert("first".to_string(), TypedValue::Integer(1000));
   
   //header
   let mut header: HashMap<String,TypedValue> = HashMap::new();
   //actual boolean
-  header.insert("code".to_string(),TypedValue::int_value(AdminCommands::ListDestination as i32));
-  header.insert("save".to_string(),TypedValue::bool_value(true));
-  header.insert("arseq".to_string(),TypedValue::int_value(1));
+  header.insert("code".to_string(),TypedValue::Integer(AdminCommands::ListDestination as i32));
+  header.insert("save".to_string(),TypedValue::Boolean(true));
+  header.insert("arseq".to_string(),TypedValue::Integer(1));
   msg.header = Some(header);
 
-  let dest = Destination{
-    destination_type: DestinationType::Queue,
-    destination_name: "$sys.admin".to_string(),
-  };
-  let query_result = session.request_reply(dest, msg.into(), TIMEOUT);
+  let admin_queue = Destination::Queue(ADMIN_QUEUE_NAME.to_string());
+  let query_result = session.request_reply(&admin_queue, msg, TIMEOUT);
   match query_result{
     Ok(response) =>{
       match response{
         Some(resp)=>{
-          match resp.message_type {
-            MessageType::MapMessage => {
+          match &resp {
+            Message::MapMessage(map_message) => {
               //got response message
-              let map_message: MapMessage = resp.into();
-              for (key,val) in map_message.body {
-                let t_info: MapMessage = val.map_value().unwrap();
+              for (key,val) in &map_message.body {
+                let t_info: &MapMessage = extract!( TypedValue::Map(_), val).expect("inner message");
                 let mut bool_global = false;
                 match t_info.body.get("global") {
                   Some(val) => {
-                    let global = val.string_value().unwrap();
+                    let global = extract!( TypedValue::String(_), val).expect("global flag");
                     bool_global = global == "1";    
                   },
                   None =>{},
                 }
-                let prefetch = t_info.body.get("pf").unwrap().string_value().unwrap();
-                let expiry = t_info.body.get("expy").unwrap().string_value().unwrap();
-                let max_bytes = t_info.body.get("mb").unwrap().string_value().unwrap();
-                let max_msgs = t_info.body.get("mm").unwrap().string_value().unwrap();
-                let durable_count = t_info.body.get("cd").unwrap().string_value().unwrap();
-                let subscriber_count = t_info.body.get("sc").unwrap().string_value().unwrap();
-                let pending_messages = t_info.body.get("nm").unwrap().string_value().unwrap();
-                let in_total_count = t_info.body.get("inct").unwrap().string_value().unwrap();
-                let out_total_count = t_info.body.get("outct").unwrap().string_value().unwrap();
-                let overflow = t_info.body.get("op").unwrap().string_value().unwrap();
+                let prefetch = extract!( TypedValue::String(_), t_info.body.get("pf").unwrap()).expect("extract property");
+                let expiry = extract!( TypedValue::String(_), t_info.body.get("expy").unwrap()).expect("extract property");
+                let max_bytes = extract!( TypedValue::String(_), t_info.body.get("mb").unwrap()).expect("extract property");
+                let max_msgs = extract!( TypedValue::String(_), t_info.body.get("mm").unwrap()).expect("extract property");
+                let durable_count = extract!( TypedValue::String(_), t_info.body.get("cd").unwrap()).expect("extract property");
+                let subscriber_count = extract!( TypedValue::String(_), t_info.body.get("sc").unwrap()).expect("extract property");
+                let pending_messages = extract!( TypedValue::String(_), t_info.body.get("nm").unwrap()).expect("extract property");
+                let in_total_count = extract!( TypedValue::String(_), t_info.body.get("inct").unwrap()).expect("extract property");
+                let out_total_count = extract!( TypedValue::String(_), t_info.body.get("outct").unwrap()).expect("extract property");
+                let overflow = extract!( TypedValue::String(_), t_info.body.get("op").unwrap()).expect("extract property");
                 let overflow_policy: OverflowPolicy;
                 match overflow.as_str() {
                   "0"=> overflow_policy=OverflowPolicy::Default,
@@ -383,7 +367,7 @@ pub fn list_all_topics(session: &Session) -> Vec<TopicInfo> {
                 }
                 
                 let topic_info = TopicInfo{
-                  name: key,
+                  name: key.to_string(),
                   expiry_override: Some(expiry.parse::<i64>().unwrap()),
                   global: Some(bool_global),
                   max_bytes: Some(max_bytes.parse::<i64>().unwrap()),
@@ -419,23 +403,23 @@ pub fn list_all_topics(session: &Session) -> Vec<TopicInfo> {
 /// the underlying connection must be an admin connection created through the tibco_ems::admin::connect() function.
 pub fn create_topic(session: &Session, topic: &TopicInfo){
   let mut msg: MapMessage = Default::default();
-  msg.body.insert("dn".to_string(), TypedValue::string_value(topic.name.clone()));
-  msg.body.insert("dt".to_string(), TypedValue::int_value(DestinationType::Topic as i32));
+  msg.body.insert("dn".to_string(), TypedValue::String(topic.name.clone()));
+  msg.body.insert("dt".to_string(), TypedValue::Integer(DESTINATION_TYPE_TOPIC));
   match topic.max_bytes {
     Some(val) => {
-      msg.body.insert("mb".to_string(), TypedValue::long_value(val));
+      msg.body.insert("mb".to_string(), TypedValue::Long(val));
     },
     _ => {},
   }
   match topic.max_messages {
     Some(val) => {
-      msg.body.insert("mm".to_string(), TypedValue::long_value(val));
+      msg.body.insert("mm".to_string(), TypedValue::Long(val));
     },
     _ => {},
   }
   match topic.global {
     Some(val) => {
-      msg.body.insert("global".to_string(), TypedValue::bool_value(val));
+      msg.body.insert("global".to_string(), TypedValue::Boolean(val));
     },
     _ => {},
   }
@@ -443,18 +427,14 @@ pub fn create_topic(session: &Session, topic: &TopicInfo){
   //header
   let mut header: HashMap<String,TypedValue> = HashMap::new();
   //actual boolean
-  header.insert("JMS_TIBCO_MSG_EXT".to_string(),TypedValue::bool_value(true));
-  header.insert("code".to_string(),TypedValue::int_value(AdminCommands::CreateDestination as i32));
-  header.insert("save".to_string(),TypedValue::bool_value(true));
-  header.insert("arseq".to_string(),TypedValue::int_value(1));
-
+  header.insert("JMS_TIBCO_MSG_EXT".to_string(),TypedValue::Boolean(true));
+  header.insert("code".to_string(),TypedValue::Integer(AdminCommands::CreateDestination as i32));
+  header.insert("save".to_string(),TypedValue::Boolean(true));
+  header.insert("arseq".to_string(),TypedValue::Integer(1));
   msg.header = Some(header);
 
-  let dest = Destination{
-    destination_type: DestinationType::Queue,
-    destination_name: ADMIN_QUEUE.to_string(),
-  };
-  let result = session.send_message(dest, msg.into());
+  let admin_queue = Destination::Queue(ADMIN_QUEUE_NAME.to_string());
+  let result = session.send_message(&admin_queue, msg);
   match result {
     Ok(_) => {},
     Err(err) => {
@@ -470,23 +450,19 @@ pub fn delete_topic(session: &Session, topic: &str) {
   trace!("deleting topic {}", topic);
   //create topic map-message
   let mut msg: MapMessage = Default::default();
-  msg.body.insert("dn".to_string(), TypedValue::string_value(topic.to_string()));
-  msg.body.insert("dt".to_string(), TypedValue::int_value(DestinationType::Topic as i32));
+  msg.body.insert("dn".to_string(), TypedValue::String(topic.to_string()));
+  msg.body.insert("dt".to_string(), TypedValue::Integer(DESTINATION_TYPE_TOPIC));
   //header
   let mut header: HashMap<String,TypedValue> = HashMap::new();
   //actual boolean
-  header.insert("JMS_TIBCO_MSG_EXT".to_string(),TypedValue::bool_value(true));
-  header.insert("code".to_string(),TypedValue::int_value(AdminCommands::DeleteDestination as i32));
-  header.insert("save".to_string(),TypedValue::bool_value(true));
-  header.insert("arseq".to_string(),TypedValue::int_value(1));
-
+  header.insert("JMS_TIBCO_MSG_EXT".to_string(),TypedValue::Boolean(true));
+  header.insert("code".to_string(),TypedValue::Integer(AdminCommands::DeleteDestination as i32));
+  header.insert("save".to_string(),TypedValue::Boolean(true));
+  header.insert("arseq".to_string(),TypedValue::Integer(1));
   msg.header = Some(header);
 
-  let dest = Destination{
-    destination_type: DestinationType::Queue,
-    destination_name: ADMIN_QUEUE.to_string(),
-  };
-  let result = session.send_message(dest, msg.into());
+  let admin_queue = Destination::Queue(ADMIN_QUEUE_NAME.to_string());
+  let result = session.send_message(&admin_queue, msg);
   match result {
     Ok(_) => {},
     Err(err) => {
@@ -502,101 +478,93 @@ pub fn delete_topic(session: &Session, topic: &str) {
 /// create a bridge
 pub fn create_bridge(session: &Session, bridge: &BridgeInfo) {
   //create bridge map-message
-  let source_name = bridge.source_name.clone();
-  let target_name = bridge.target_name.clone();
   let mut msg: MapMessage = Default::default();
-  msg.body.insert("sn".to_string(), TypedValue::string_value(source_name));
-  match bridge.source_type {
-    DestinationType::Queue =>{
-      msg.body.insert("st".to_string(), TypedValue::int_value(DestinationType::Queue as i32));
+  match bridge.source.clone() {
+    Destination::Queue(name) =>{
+      msg.body.insert("st".to_string(), TypedValue::Integer(DESTINATION_TYPE_QUEUE));
+      msg.body.insert("sn".to_string(), TypedValue::String(name.to_string()));
     },
-    DestinationType::Topic =>{
-      msg.body.insert("st".to_string(), TypedValue::int_value(DestinationType::Topic as i32));
+    Destination::Topic(name) =>{
+      msg.body.insert("st".to_string(), TypedValue::Integer(DESTINATION_TYPE_TOPIC));
+      msg.body.insert("sn".to_string(), TypedValue::String(name.to_string()));
     },
   }
 
-  msg.body.insert("tn".to_string(), TypedValue::string_value(target_name));
-  match bridge.target_type {
-    DestinationType::Queue =>{
-      msg.body.insert("tt".to_string(), TypedValue::int_value(DestinationType::Queue as i32));
+  match bridge.target.clone() {
+    Destination::Queue(name) =>{
+      msg.body.insert("tt".to_string(), TypedValue::Integer(DESTINATION_TYPE_QUEUE));
+      msg.body.insert("tn".to_string(), TypedValue::String(name.to_string()));
     },
-    DestinationType::Topic =>{
-      msg.body.insert("tt".to_string(), TypedValue::int_value(DestinationType::Topic as i32));
+    Destination::Topic(name) =>{
+      msg.body.insert("tt".to_string(), TypedValue::Integer(DESTINATION_TYPE_TOPIC));
+      msg.body.insert("tn".to_string(), TypedValue::String(name.to_string()));
     },
   }
   match bridge.selector.clone() {
     Some(sel) => {
-      msg.body.insert("sel".to_string(), TypedValue::string_value(sel));
+      msg.body.insert("sel".to_string(), TypedValue::String(sel));
     },
     None => {},
   }
   //header
   let mut header: HashMap<String,TypedValue> = HashMap::new();
   //actual boolean
-  header.insert("JMS_TIBCO_MSG_EXT".to_string(),TypedValue::bool_value(true));
-  header.insert("code".to_string(),TypedValue::int_value(AdminCommands::CreateBridge as i32));
-  header.insert("save".to_string(),TypedValue::bool_value(true));
-  header.insert("arseq".to_string(),TypedValue::int_value(1));
-
+  header.insert("JMS_TIBCO_MSG_EXT".to_string(),TypedValue::Boolean(true));
+  header.insert("code".to_string(),TypedValue::Integer(AdminCommands::CreateBridge as i32));
+  header.insert("save".to_string(),TypedValue::Boolean(true));
+  header.insert("arseq".to_string(),TypedValue::Integer(1));
   msg.header = Some(header);
 
-  let dest = Destination{
-    destination_type: DestinationType::Queue,
-    destination_name: ADMIN_QUEUE.to_string(),
-  };
-  let result = session.send_message(dest, msg.into());
+  let admin_queue = Destination::Queue(ADMIN_QUEUE_NAME.to_string());
+  let result = session.send_message(&admin_queue, msg);
   match result {
     Ok(_) => {},
     Err(err) => {
-      error!("error while creating bridge {}->{}: {}",bridge.source_name,bridge.target_name,err);
+      error!("error while creating bridge {:?}->{:?}: {}",bridge.source,bridge.target,err);
     },
   }
 }
 
 /// delete a bridge
 pub fn delete_bridge(session: &Session, bridge: &BridgeInfo) {
-  let source_name = bridge.source_name.clone();
-  let target_name = bridge.target_name.clone();
-
   //create bridge map-message
   let mut msg: MapMessage = Default::default();
-  msg.body.insert("sn".to_string(), TypedValue::string_value(source_name));
-  match bridge.source_type {
-    DestinationType::Queue =>{
-      msg.body.insert("st".to_string(), TypedValue::int_value(DestinationType::Queue as i32));
+  match bridge.source.clone() {
+    Destination::Queue(name) =>{
+      msg.body.insert("st".to_string(), TypedValue::Integer(DESTINATION_TYPE_QUEUE));
+      msg.body.insert("sn".to_string(), TypedValue::String(name.to_string()));
     },
-    DestinationType::Topic =>{
-      msg.body.insert("st".to_string(), TypedValue::int_value(DestinationType::Topic as i32));
+    Destination::Topic(name) =>{
+      msg.body.insert("st".to_string(), TypedValue::Integer(DESTINATION_TYPE_TOPIC));
+      msg.body.insert("sn".to_string(), TypedValue::String(name.to_string()));
     },
   }
 
-  msg.body.insert("tn".to_string(), TypedValue::string_value(target_name));
-  match bridge.target_type {
-    DestinationType::Queue =>{
-      msg.body.insert("tt".to_string(), TypedValue::int_value(DestinationType::Queue as i32));
+  match bridge.target.clone() {
+    Destination::Queue(name) =>{
+      msg.body.insert("tt".to_string(), TypedValue::Integer(DESTINATION_TYPE_QUEUE));
+      msg.body.insert("tn".to_string(), TypedValue::String(name.to_string()));
     },
-    DestinationType::Topic =>{
-      msg.body.insert("tt".to_string(), TypedValue::int_value(DestinationType::Topic as i32));
+    Destination::Topic(name) =>{
+      msg.body.insert("tt".to_string(), TypedValue::Integer(DESTINATION_TYPE_TOPIC));
+      msg.body.insert("tn".to_string(), TypedValue::String(name.to_string()));
     },
   }
   //header
   let mut header: HashMap<String,TypedValue> = HashMap::new();
   //actual boolean
-  header.insert("JMS_TIBCO_MSG_EXT".to_string(),TypedValue::bool_value(true));
-  header.insert("code".to_string(),TypedValue::int_value(AdminCommands::DeleteBrdige as i32));
-  header.insert("save".to_string(),TypedValue::bool_value(true));
-  header.insert("arseq".to_string(),TypedValue::int_value(1));
+  header.insert("JMS_TIBCO_MSG_EXT".to_string(),TypedValue::Boolean(true));
+  header.insert("code".to_string(),TypedValue::Integer(AdminCommands::DeleteBrdige as i32));
+  header.insert("save".to_string(),TypedValue::Boolean(true));
+  header.insert("arseq".to_string(),TypedValue::Integer(1));
   msg.header = Some(header);
 
-  let dest = Destination{
-    destination_type: DestinationType::Queue,
-    destination_name: ADMIN_QUEUE.to_string(),
-  };
-  let result = session.send_message(dest, msg.into());
+  let admin_queue = Destination::Queue(ADMIN_QUEUE_NAME.to_string());
+  let result = session.send_message(&admin_queue, msg);
   match result {
     Ok(_) => {},
     Err(err) => {
-      error!("error while deleting bridge {}->{}: {}",bridge.source_name,bridge.target_name,err);
+      error!("error while deleting bridge {:?}->{:?}: {}",bridge.source,bridge.target,err);
     }
   } 
 }
@@ -615,25 +583,21 @@ pub fn get_server_state(session: &Session) -> ServerState {
   //header
   let mut header: HashMap<String,TypedValue> = HashMap::new();
   //actual boolean
-  header.insert("code".to_string(),TypedValue::int_value(AdminCommands::GetStateInfo as i32));
-  header.insert("save".to_string(),TypedValue::bool_value(true));
-  header.insert("arseq".to_string(),TypedValue::int_value(1));
+  header.insert("code".to_string(),TypedValue::Integer(AdminCommands::GetStateInfo as i32));
+  header.insert("save".to_string(),TypedValue::Boolean(true));
+  header.insert("arseq".to_string(),TypedValue::Integer(1));
   msg.header = Some(header);
 
-  let dest = Destination{
-    destination_type: DestinationType::Queue,
-    destination_name: ADMIN_QUEUE.to_string(),
-  };
-  let query_result = session.request_reply(dest, msg.into(), TIMEOUT);
+  let admin_queue = Destination::Queue(ADMIN_QUEUE_NAME.to_string());
+  let query_result = session.request_reply(&admin_queue, msg, TIMEOUT);
   match query_result{
     Ok(response) =>{
       match response{
         Some(resp)=>{
-          match resp.message_type {
-            MessageType::MapMessage => {
+          match &resp {
+            Message::MapMessage(map_message) => {
               //got response message
-              let map_message: MapMessage = resp.into();
-              let state_str = map_message.body.get("state").unwrap().string_value().unwrap();
+              let state_str = extract!( TypedValue::String(_), map_message.body.get("state").unwrap()).expect("extract server status");
               if state_str == "3"{
                 return ServerState::Standby;
               }else{
@@ -659,14 +623,10 @@ pub fn get_server_state(session: &Session) -> ServerState {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BridgeInfo{
-  /// type of the bridge source
-  pub source_type: DestinationType,
-  /// name of the bridge source
-  pub source_name: String,
-  /// type of the bridge target
-  pub target_type: DestinationType,
-  /// name of the bridge target
-  pub target_name: String,
+  // source of the bridge
+  pub source: Destination,
+  // target of the bridge
+  pub target: Destination,
   /// selector
   pub selector: Option<String>,
 }

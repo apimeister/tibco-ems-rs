@@ -1,5 +1,4 @@
 use tibco_ems::Destination;
-use tibco_ems::DestinationType;
 
 fn main() {
   let url = "tcp://localhost:7222";
@@ -10,11 +9,8 @@ fn main() {
   {
     let session = connection.transacted_session().unwrap();
 
-    let destination = Destination{
-      destination_type: DestinationType::Queue,
-      destination_name: "myqueue".to_string(),
-    };
-    let consumer = session.queue_consumer(destination,None).unwrap();
+    let destination = Destination::Queue("myqueue".to_string());
+    let consumer = session.queue_consumer(&destination, None).unwrap();
     
     println!("waiting 10 seconds for a message");
     let msg_result = consumer.receive_message(Some(10000));

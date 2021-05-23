@@ -11,21 +11,25 @@ use tibco_ems_sys::tibemsDestinationType;
 use tibco_ems_sys::tibems_bool;
 use tibco_ems_sys::tibemsMsgType;
 use log::{trace, error};
-use std::convert::TryInto;
 use serde::{Serialize, Deserialize};
+use std::rc::Rc;
+use std::ops::Deref;
 
 pub mod admin;
 
+#[cfg(feature = "streaming")]
+pub mod stream;
+
 /// holds the native Connection pointer
 #[allow(dead_code)]
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct Connection{
-  pointer: usize
+  pointer: Rc<usize>,
 }
 
 /// holds the native Session pointer
 #[allow(dead_code)]
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct Session{
   pointer: usize,
   producer_pointer: usize,
@@ -33,46 +37,105 @@ pub struct Session{
 
 /// holds the native Consumer pointer
 #[allow(dead_code)]
-#[derive(Debug,Copy,Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct Consumer{
-  pointer: usize
+  pointer: usize,
 }
 
 /// Destination, can either be Queue or Topic
 #[allow(dead_code)]
-#[derive(Debug,Clone)]
-pub struct Destination{
-  /// type of the destination, either queue or topic
-  pub destination_type: DestinationType,
-  /// name of the destination
-  pub destination_name: String,
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum Destination{
+  Queue(String),
+  Topic(String),
 }
 
-/// Type of the message
-#[allow(dead_code)]
-#[derive(Debug,Copy,Clone)]
-pub enum MessageType{
-  /// message body of type text
-  TextMessage,
-  /// message body of type binary
-  BytesMessage,
-  /// message body of type map
-  MapMessage,
+/// represents a Text Message
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TextMessage {
+  /// message body
+  pub body: String,
+  /// message header
+  pub header: Option<HashMap<String, TypedValue>>,
+  /// reply to header
+  pub reply_to: Option<Destination>,
+  /// point to the ems native object
+  pub pointer: Option<usize>,
 }
 
-/// Type of the destination
+impl Default for TextMessage{
+  fn default() -> Self {
+    TextMessage{
+      body: "".to_string(),
+      header: None,
+      reply_to: None,
+      pointer: None,
+    }  
+  }
+}
+
+/// represents a Binary Message
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BytesMessage {
+  /// message body
+  pub body: Vec<u8>,
+  /// message header
+  pub header: Option<HashMap<String, TypedValue>>,
+  /// reply to header
+  pub reply_to: Option<Destination>,
+  /// point to the ems native object
+  pub pointer: Option<usize>,  
+}
+
+impl Default for BytesMessage{
+  fn default() -> Self {
+    BytesMessage{
+      body: vec![],
+      header: None,
+      reply_to: None,
+      pointer: None,
+    }  
+  }
+}
+
+/// represents a Map Message
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct MapMessage {
+  /// message body map properties
+  pub body: HashMap<String, TypedValue>,
+  /// message header
+  pub header: Option<HashMap<String, TypedValue>>,
+  /// reply to header
+  pub reply_to: Option<Destination>,
+  /// point to the ems native object
+  pub pointer: Option<usize>,
+}
+
+impl Default for MapMessage{
+  fn default() -> Self {
+    MapMessage{
+      body: HashMap::new(),
+      header: None,
+      reply_to: None,
+      pointer: None,
+    }  
+  }
+}
+
+/// Message enum wich represents the different message types
 #[allow(dead_code)]
-#[derive(Debug,Copy,Clone,Serialize,Deserialize)]
-pub enum DestinationType{
-  /// destination type queue
-  Queue = 1,
-  /// destination type topic
-  Topic = 2,
+#[derive(Debug, Clone)]
+pub enum Message {
+  /// represents a Text Message
+  TextMessage(TextMessage),
+  /// represents a Binary Message
+  BytesMessage(BytesMessage),
+  /// represents a Map Message
+  MapMessage(MapMessage),
 }
 
 /// open a connection to the Tibco EMS server
 pub fn connect(url: &str, user: &str, password: &str) -> Result<Connection, Error> {
-  let conn: Connection;
   let mut connection_pointer: usize = 0;
   unsafe{
     let factory = tibco_ems_sys::tibemsConnectionFactory_Create();
@@ -87,7 +150,7 @@ pub fn connect(url: &str, user: &str, password: &str) -> Result<Connection, Erro
     }
     let c_user = CString::new(user).unwrap();
     let c_password = CString::new(password).unwrap();
-    let status = tibco_ems_sys::tibemsConnectionFactory_CreateConnection(factory,&mut connection_pointer,c_user.as_ptr(),c_password.as_ptr());
+    let status = tibco_ems_sys::tibemsConnectionFactory_CreateConnection(factory, &mut connection_pointer, c_user.as_ptr(),c_password.as_ptr());
     match status {
       tibems_status::TIBEMS_OK => trace!("tibemsConnectionFactory_CreateConnection: {:?}",status),
       _ => {
@@ -95,7 +158,6 @@ pub fn connect(url: &str, user: &str, password: &str) -> Result<Connection, Erro
         return Err(Error::new(ErrorKind::NotConnected, "cannot create connection"));
       },
     }
-    conn = Connection{pointer: connection_pointer};
     let status = tibco_ems_sys::tibemsConnection_Start(connection_pointer);
     match status {
       tibems_status::TIBEMS_OK => trace!("tibemsConnection_Start: {:?}",status),
@@ -105,6 +167,7 @@ pub fn connect(url: &str, user: &str, password: &str) -> Result<Connection, Erro
       },
     }
   }
+  let conn = Connection{pointer: Rc::from(connection_pointer)};
   Ok(conn)
 }
 
@@ -112,13 +175,13 @@ pub fn connect(url: &str, user: &str, password: &str) -> Result<Connection, Erro
 // connection
 //
 
-impl Connection {
+impl<'stream> Connection {
   /// open a session
   pub fn session(&self) -> Result<Session, Error> {
-    let session: Session;
     unsafe{
       let mut session_pointer:usize = 0;
-      let status = tibco_ems_sys::tibemsConnection_CreateSession(self.pointer, &mut session_pointer, tibco_ems_sys::tibems_bool::TIBEMS_FALSE, tibco_ems_sys::tibemsAcknowledgeMode::TIBEMS_AUTO_ACKNOWLEDGE);
+      let connection_pointer = *self.pointer.deref();
+      let status = tibco_ems_sys::tibemsConnection_CreateSession(connection_pointer, &mut session_pointer, tibco_ems_sys::tibems_bool::TIBEMS_FALSE, tibco_ems_sys::tibemsAcknowledgeMode::TIBEMS_AUTO_ACKNOWLEDGE);
       match status {
         tibems_status::TIBEMS_OK => trace!("tibemsConnection_CreateSession: {:?}",status),
         _ => {
@@ -136,16 +199,18 @@ impl Connection {
           return Err(Error::new(ErrorKind::Other, "creating producer failed"));
         },
       }
-      session = Session{pointer: session_pointer, producer_pointer: producer};
+      let session = Session{pointer: session_pointer, producer_pointer: producer};
+      Ok(session)
     }
-    Ok(session)
   }
+
   /// open a session with transaction support
   pub fn transacted_session(&self)-> Result<Session, Error> {
     let session: Session;
     unsafe{
       let mut session_pointer:usize = 0;
-      let status = tibco_ems_sys::tibemsConnection_CreateSession(self.pointer, &mut session_pointer, tibco_ems_sys::tibems_bool::TIBEMS_FALSE, tibco_ems_sys::tibemsAcknowledgeMode::TIBEMS_EXPLICIT_CLIENT_ACKNOWLEDGE);
+      let connection_pointer = *self.pointer.deref();
+      let status = tibco_ems_sys::tibemsConnection_CreateSession(connection_pointer, &mut session_pointer, tibco_ems_sys::tibems_bool::TIBEMS_FALSE, tibco_ems_sys::tibemsAcknowledgeMode::TIBEMS_EXPLICIT_CLIENT_ACKNOWLEDGE);
       match status {
         tibems_status::TIBEMS_OK => trace!("tibemsConnection_CreateSession: {:?}",status),
         _ => {
@@ -171,10 +236,11 @@ impl Connection {
   /// this is only required for admin connections, 
   /// normal connections automatically choose the active server
   pub fn get_active_url(&self) -> Result<String, Error> {
+    let connection_pointer = *self.pointer.deref();
     unsafe{
       let buf_vec:Vec<i8> = vec![0; 0];
       let buf_ref: *const std::os::raw::c_char = buf_vec.as_ptr();
-      let status = tibco_ems_sys::tibemsConnection_GetActiveURL(self.pointer, &buf_ref);
+      let status = tibco_ems_sys::tibemsConnection_GetActiveURL(connection_pointer, &buf_ref);
       match status {
         tibems_status::TIBEMS_OK => trace!("tibemsConnection_GetActiveURL: {:?}",status),
         _ => {
@@ -185,6 +251,19 @@ impl Connection {
       let url = CStr::from_ptr(buf_ref).to_str().unwrap();
       return Ok(url.to_string());
     }
+  }
+  // open a consumer as stream of messages
+  #[cfg(feature = "streaming")]
+  pub fn open_stream<T: Into<Message>>(&'stream self,destination: &Destination, selector: Option<&str>) -> Result<stream::MessageStream<T>,Error> {
+    let session = self.session().unwrap();
+    let consumer = session.queue_consumer(destination, selector).unwrap();
+    let stream = stream::MessageStream::<T>{
+      connection: Rc::from(self.clone()),
+      session: Rc::from(session),
+      consumer: Rc::from(consumer),
+      message: None,
+    };
+    Ok(stream)
   }
 }
 
@@ -239,14 +318,14 @@ impl Consumer {
 
 impl Session {
   /// open a message consumer
-  pub fn queue_consumer(&self, destination: Destination, selector: Option<String>) -> Result<Consumer, Error> {
+  pub fn queue_consumer(&self, destination: &Destination, selector: Option<&str>) -> Result<Consumer, Error> {
     let consumer: Consumer;
     let mut destination_pointer: usize = 0;
     unsafe{
       //create destination
-      match destination.destination_type {
-        DestinationType::Queue => {
-          let c_destination = CString::new(destination.destination_name).unwrap();
+      match destination {
+        Destination::Queue(name) => {
+          let c_destination = CString::new(name.clone()).unwrap();
           let status = tibco_ems_sys::tibemsDestination_Create(&mut destination_pointer, tibemsDestinationType::TIBEMS_QUEUE, c_destination.as_ptr());
           match status {
             tibems_status::TIBEMS_OK => trace!("tibemsDestination_Create: {:?}",status),
@@ -257,8 +336,8 @@ impl Session {
             },
           }
         },
-        DestinationType::Topic => {
-          let c_destination = CString::new(destination.destination_name).unwrap();
+        Destination::Topic(name) => {
+          let c_destination = CString::new(name.clone()).unwrap();
           let status = tibco_ems_sys::tibemsDestination_Create(&mut destination_pointer, tibemsDestinationType::TIBEMS_TOPIC, c_destination.as_ptr());
           match status {
             tibems_status::TIBEMS_OK => trace!("tibemsDestination_Create: {:?}",status),
@@ -311,13 +390,14 @@ impl Session {
   }
 
   /// sending a message to a destination (only queues are supported)
-  pub fn send_message(&self, destination: Destination, message: Message) -> Result<(), Error>{
+  pub fn send_message<M: Into<Message>>(&self, destination: &Destination, message: M) -> Result<(), Error>{
+    let message: Message = message.into();
     let mut dest: usize = 0;
     let mut local_producer: usize = 0;
     unsafe{
-      match destination.destination_type {
-        DestinationType::Queue => {
-          let c_destination = CString::new(destination.destination_name).unwrap();
+      match destination {
+        Destination::Queue(name) => {
+          let c_destination = CString::new(name.clone()).unwrap();
           let status = tibco_ems_sys::tibemsDestination_Create(&mut dest, tibemsDestinationType::TIBEMS_QUEUE, c_destination.as_ptr());
           match status {
             tibems_status::TIBEMS_OK => trace!("tibemsDestination_Create: {:?}",status),
@@ -328,8 +408,8 @@ impl Session {
             },
           }
         },
-        DestinationType::Topic => {
-          let c_destination = CString::new(destination.destination_name).unwrap();
+        Destination::Topic(name) => {
+          let c_destination = CString::new(name.clone()).unwrap();
           let status = tibco_ems_sys::tibemsDestination_Create(&mut dest, tibemsDestinationType::TIBEMS_TOPIC, c_destination.as_ptr());
           match status {
             tibems_status::TIBEMS_OK => trace!("tibemsDestination_Create: {:?}",status),
@@ -345,7 +425,11 @@ impl Session {
         let status = tibco_ems_sys::tibemsSession_CreateProducer(self.pointer,&mut local_producer,dest);
         match status {
           tibems_status::TIBEMS_OK => trace!("tibemsSession_CreateProducer: {:?}",status),
-          _ => error!("tibemsSession_CreateProducer: {:?}",status),
+          _ =>{
+            let status_str = format!("{:?}",status);
+            error!("tibemsSession_CreateProducer: {}",status_str);
+            return Err(Error::new(ErrorKind::Other, format!("create produce failed: {}",status_str)));
+          },
         }
       }
       let msg = build_message_pointer_from_message(&message);
@@ -353,7 +437,11 @@ impl Session {
           self.producer_pointer, dest, msg);
       match status {
         tibems_status::TIBEMS_OK => trace!("tibemsMsgProducer_Send: {:?}",status),
-        _ => error!("tibemsMsgProducer_Send: {:?}",status),
+        _ =>{
+          let status_str = format!("{:?}",status);
+          error!("tibemsMsgProducer_Send: {}",status_str);
+          return Err(Error::new(ErrorKind::Other, format!("send message failed: {}",status_str)));
+        },
       }
       //destroy producer if generated inline
       if self.producer_pointer == 0 {
@@ -380,32 +468,33 @@ impl Session {
   }
 
   /// request/reply
-  pub fn request_reply(&self, destination: Destination, message: Message, timeout: i64) -> Result<Option<Message>, Error>{
+  pub fn request_reply<M: Into<Message>>(&self, destination: &Destination, message: M, timeout: i64) -> Result<Option<Message>, Error>{
+    let message: Message = message.into();
     //create temporary destination
     let mut reply_dest: usize = 0;
     let mut dest: usize = 0;
     unsafe {
-      match destination.destination_type {
-        DestinationType::Queue =>{
+      match &destination {
+        Destination::Queue(name) =>{
           let status = tibco_ems_sys::tibemsSession_CreateTemporaryQueue(self.pointer, &mut reply_dest);
           match status {
             tibems_status::TIBEMS_OK => trace!("tibemsSession_CreateTemporaryQueue: {:?}",status),
             _ => error!("tibemsSession_CreateTemporaryQueue: {:?}",status),
           }
-          let c_destination = CString::new(destination.destination_name).unwrap();
+          let c_destination = CString::new(name.clone()).unwrap();
           let status = tibco_ems_sys::tibemsDestination_Create(&mut dest, tibemsDestinationType::TIBEMS_QUEUE, c_destination.as_ptr());
           match status {
             tibems_status::TIBEMS_OK => trace!("tibemsDestination_Create: {:?}",status),
             _ => error!("tibemsDestination_Create: {:?}",status),
           }
         },
-        DestinationType::Topic =>{
+        Destination::Topic(name) =>{
           let status = tibco_ems_sys::tibemsSession_CreateTemporaryTopic(self.pointer, &mut reply_dest);
           match status {
             tibems_status::TIBEMS_OK => trace!("tibemsSession_CreateTemporaryTopic: {:?}",status),
             _ => error!("tibemsSession_CreateTemporaryTopic: {:?}",status),
           }
-          let c_destination = CString::new(destination.destination_name).unwrap();
+          let c_destination = CString::new(name.clone()).unwrap();
           let status = tibco_ems_sys::tibemsDestination_Create(&mut dest, tibemsDestinationType::TIBEMS_TOPIC, c_destination.as_ptr());
           match status {
             tibems_status::TIBEMS_OK => trace!("tibemsDestination_Create: {:?}",status),
@@ -473,8 +562,8 @@ impl Session {
         _ => error!("tibemsMsgConsumer_Close: {:?}",status),
       }
       //destroy temporary destination
-      match destination.destination_type {
-        DestinationType::Queue =>{
+      match &destination {
+        Destination::Queue{..} =>{
           //destroy reply_to_queue
           let status = tibco_ems_sys::tibemsSession_DeleteTemporaryQueue(self.pointer, reply_dest);
           match status {
@@ -482,7 +571,7 @@ impl Session {
             _ => error!("tibemsSession_DeleteTemporaryQueue: {:?}",status),
           }
         },
-        DestinationType::Topic =>{
+        Destination::Topic{..} =>{
           //destroy reply_to_queue
           let status = tibco_ems_sys::tibemsSession_DeleteTemporaryTopic(self.pointer, reply_dest);
           match status {
@@ -506,438 +595,152 @@ impl Drop for Session {
 // messages
 //
 
-/// represents a Text Message which can be transformed into Message through From,Into trait.
-#[allow(dead_code)]
-#[derive(Debug,Clone)]
-pub struct TextMessage {
-  /// message body
-  pub body: String,
-  /// message header
-  pub header: Option<HashMap<String, TypedValue>>,
-}
-
-impl From<Message> for TextMessage {
-  fn from(msg: Message) -> Self {
-    TextMessage{
-      body: msg.body_text.clone().unwrap(),
-      header: msg.header.clone(),
-    }
+impl From<MapMessage> for Message {
+  fn from(msg: MapMessage) -> Self {
+    Message::MapMessage(msg)
   }
-}
-
-impl From<&Message> for TextMessage {
-  fn from(msg: &Message) -> Self {
-    TextMessage{
-      body: msg.body_text.clone().unwrap(),
-      header: msg.header.clone(),
-    }
-  }
-}
-
-/// represents a Bytes Message which can be transformed into Message through From,Into trait.
-#[allow(dead_code)]
-#[derive(Debug,Clone)]
-pub struct BytesMessage {
-  /// message body
-  pub body: Vec<u8>,
-  /// message header
-  pub header: Option<HashMap<String, TypedValue>>,
-}
-
-impl From<Message> for BytesMessage {
-  fn from(msg: Message) -> Self {
-    BytesMessage{
-      body: msg.body_binary.clone().unwrap(),
-      header: msg.header.clone(),
-    }
-  }
-}
-
-impl From<&Message> for BytesMessage {
-  fn from(msg: &Message) -> Self {
-    BytesMessage{
-      body: msg.body_binary.clone().unwrap(),
-      header: msg.header.clone(),
-    }
-  }
-}
-
-/// represents a Map Message which can be transformed into Message through From,Into trait.
-#[allow(dead_code)]
-#[derive(Debug,Clone,Default,Serialize, Deserialize, PartialEq)]
-pub struct MapMessage {
-  /// message body map properties
-  pub body: HashMap<String, TypedValue>,
-  /// message header
-  pub header: Option<HashMap<String, TypedValue>>,
-}
-
-impl From<Message> for MapMessage {
-  fn from(msg: Message) -> Self {
-    //use the borrow implementation
-    (&msg).into()
-  }
-}
-
-impl From<&Message> for MapMessage {
-  fn from(msg: &Message) -> Self {
-    let mut out_msg: MapMessage = Default::default();
-    out_msg.header= msg.header.clone();
-    let map = msg.body_map.clone().unwrap();
-    for (key,val) in map {
-      match val.value_type {
-        PropertyType::String => {
-          out_msg.body.insert(key, TypedValue{
-            value_type: PropertyType::String,
-            value: val.value,
-          });
-        },
-        PropertyType::Map => {
-          out_msg.body.insert(key, TypedValue{
-            value_type: PropertyType::Map,
-            value: val.value,
-          });
-        },
-        _ => {
-          panic!("missing body type implementation {:?}",val.value_type);
-        }
-      }
-    }
-    out_msg
-  }
-}
-
-/// represents a generic Message which can be transformed into a TextMessage or BytesMessage through From,Into trait.
-#[allow(dead_code)]
-#[derive(Debug,Clone)]
-pub struct Message {
-  /// type of the message, currenlty on TextMessage is supported
-  pub message_type: MessageType,
-  /// reply to header
-  pub reply_to: Option<Destination>,
-  /// message body if type is text
-  body_text: Option<String>,
-  /// message body if type is binary
-  body_binary: Option<Vec<u8>>,
-  /// message body if type is map
-  body_map: Option<HashMap<String, TypedValue>>,
-  // message header
-  header: Option<HashMap<String, TypedValue>>,
-  message_pointer: Option<usize>,
-}
-
-/// represents a typed value, which is used for message header and message properties
-#[allow(dead_code)]
-#[derive(Debug,Clone,Serialize, Deserialize, PartialEq)]
-pub struct TypedValue{
-  /// type of the property
-  pub value_type: PropertyType,
-  /// binary representation of the value
-  pub value: Vec<u8>,
-}
-
-impl TypedValue {
-  /// constructs a TypedValue from a boolean
-  pub fn bool_value(val: bool) -> TypedValue{
-    match val {
-      true => TypedValue{
-        value_type: PropertyType::Boolean,
-        value: vec![1],
-       },
-      false => TypedValue{
-        value_type: PropertyType::Boolean,
-        value: vec![0],
-      },
-    }
-  }
-  /// constructs a TypedValue from a i32
-  pub fn int_value(val: i32) -> TypedValue{
-    TypedValue{
-      value_type: PropertyType::Integer,
-      value: val.to_ne_bytes().to_vec(),
-    }
-  }
-  /// constructs a TypedValue from a i64
-  pub fn long_value(val: i64) -> TypedValue{
-    TypedValue{
-      value_type: PropertyType::Long,
-      value: val.to_ne_bytes().to_vec(),
-    }
-  }
-  /// constructs a TypedValue from a String
-  pub fn string_value(val: String) -> TypedValue{
-    TypedValue{
-      value_type: PropertyType::String,
-      value: val.as_bytes().to_vec(),
-    }
-  }
-  /// constructs a TypedValue from a &[u8]
-  pub fn binary_value(val: &[u8]) -> TypedValue{
-    TypedValue{
-      value_type: PropertyType::Binary,
-      value: val.to_vec(),
-    }
-  }
-  /// constructs a TypedValue from a f32
-  pub fn float_value(val: f32) -> TypedValue{
-    TypedValue{
-      value_type: PropertyType::Float,
-      value: val.to_ne_bytes().to_vec(),
-    }
-  }
-  /// constructs a TypedValue from a f64
-  pub fn double_value(val: f64) -> TypedValue{
-    TypedValue{
-      value_type: PropertyType::Double,
-      value: val.to_ne_bytes().to_vec(),
-    }
-  }
-  /// constructs a TypedValue from a MapMessage
-  pub fn map_value(val: MapMessage) -> TypedValue{
-    TypedValue{
-      value_type: PropertyType::Map,
-      value: bincode::serialize(&val).unwrap(),
-    }
-  }
-}
-
-/// Trait to retrieve a i32 value
-pub trait GetIntValue {
-  /// retrieve typed value
-  fn int_value(&self) -> Result<i32, Error>;
-}
-
-/// Trait to retrieve a i64 value
-pub trait GetLongValue {
-  /// retrieve typed value
-  fn long_value(&self) -> Result<i64, Error>;
-}
-
-/// Trait to retrieve a bool value
-pub trait GetBoolValue {
-  /// retrieve typed value
-  fn bool_value(&self) -> Result<bool, Error>;
-}
-
-/// Trait to retrieve a String value
-pub trait GetStringValue {
-  /// retrieve typed value
-  fn string_value(&self) -> Result<String, Error>;
-}
-
-/// Trait to retrieve a f32 value
-pub trait GetFloatValue {
-  /// retrieve typed value
-  fn float_value(&self) -> Result<f32, Error>;
-}
-
-/// Trait to retrieve a f64 value
-pub trait GetDoubleValue {
-  /// retrieve typed value
-  fn double_value(&self) -> Result<f64, Error>;
-}
-
-/// Trait to retrieve a MapMessage value
-pub trait GetMapValue {
-  /// retrieve typed value
-  fn map_value(&self) -> Result<MapMessage, Error>;
-}
-
-impl GetIntValue for TypedValue {
-  fn int_value(&self) -> Result<i32, Error>{
-    match self.value_type {
-      PropertyType::Integer => {
-        let (int_bytes, _) = self.value.split_at(std::mem::size_of::<i32>());
-        let value = i32::from_ne_bytes(int_bytes.try_into().unwrap());
-        Ok(value)
-      },
-      _ => Err(Error::new(std::io::ErrorKind::InvalidData, "not an int value")),
-    }
-  }
-}
-
-impl GetLongValue for TypedValue {
-  fn long_value(&self) -> Result<i64, Error>{
-    match self.value_type {
-      PropertyType::Long => {
-        let (long_bytes, _) = self.value.split_at(std::mem::size_of::<i64>());
-        let value = i64::from_ne_bytes(long_bytes.try_into().unwrap());
-        Ok(value)
-      },
-      _ => Err(Error::new(std::io::ErrorKind::InvalidData, "not an long value")),
-    }
-  }
-}
-
-impl GetBoolValue for TypedValue {
-  fn bool_value(&self) -> Result<bool, Error>{
-    match self.value_type {
-      PropertyType::Boolean => {
-        if self.value[0] == 0 {
-          return Ok(false)
-        } else {
-          return Ok(true)
-        }
-      },
-      _ => Err(Error::new(std::io::ErrorKind::InvalidData, "not a bool value")),
-    }
-  }
-}
-
-impl GetStringValue for TypedValue {
-  fn string_value(&self) -> Result<String, Error>{
-    match self.value_type {
-      PropertyType::String => Ok(String::from_utf8(self.value.clone()).unwrap()),
-      _ => Err(Error::new(std::io::ErrorKind::InvalidData, "not a string value")),
-    }
-  }
-}
-
-impl GetFloatValue for TypedValue {
-  fn float_value(&self) -> Result<f32, Error>{
-    match self.value_type {
-      PropertyType::Float => {
-        let (float_bytes, _) = self.value.split_at(std::mem::size_of::<f32>());
-        let value = f32::from_ne_bytes(float_bytes.try_into().unwrap());
-        Ok(value)
-      },
-      _ => Err(Error::new(std::io::ErrorKind::InvalidData, "not a float value")),
-    }
-  }
-}
-
-impl GetDoubleValue for TypedValue {
-  fn double_value(&self) -> Result<f64, Error>{
-    match self.value_type {
-      PropertyType::Double => {
-        let (double_bytes, _) = self.value.split_at(std::mem::size_of::<f64>());
-        let value = f64::from_ne_bytes(double_bytes.try_into().unwrap());
-        Ok(value)
-      },
-      _ => Err(Error::new(std::io::ErrorKind::InvalidData, "not a double value")),
-    }
-  }
-}
-
-impl GetMapValue for TypedValue {
-  fn map_value(&self) -> Result<MapMessage, Error>{
-    match self.value_type {
-      PropertyType::Map => {
-        let value = bincode::deserialize(&self.value).unwrap();
-        Ok(value)
-      },
-      _ => Err(Error::new(std::io::ErrorKind::InvalidData, "not a map value")),
-    }
-  }
-}
-
-/// Type of a property value
-#[allow(dead_code)]
-#[derive(Debug,Clone,Serialize, Deserialize, PartialEq)]
-pub enum PropertyType{
-  /// represents a String Value
-  String,
-  /// represents a integer Value
-  Integer,
-  /// represents a long Value
-  Long,
-  /// represents a float Value
-  Float,
-  /// represents a double Value
-  Double,
-  /// represents a binary Value
-  Binary,
-  /// represents a MapMessage Value
-  Map,
-  /// represents a boolean Value
-  Boolean,
 }
 
 impl From<TextMessage> for Message {
   fn from(msg: TextMessage) -> Self {
-    Message{
-      message_type: MessageType::TextMessage,
-      body_text: Some(msg.body.clone()),
-      body_binary: None,
-      body_map: None,
-      header: msg.header.clone(),
-      message_pointer: None,
-      reply_to: None,
-    }
+    Message::TextMessage(msg)
   }
 }
 
 impl From<BytesMessage> for Message {
   fn from(msg: BytesMessage) -> Self {
-    Message{
-      message_type: MessageType::BytesMessage,
-      body_text: None,
-      body_binary: Some(msg.body.clone()),
-      body_map: None,
-      header: msg.header.clone(),
-      message_pointer: None,
-      reply_to: None,
-    }
+    Message::BytesMessage(msg)
   }
 }
 
-impl From<MapMessage> for Message {
-  fn from(msg: MapMessage) -> Self {
-    Message{
-      message_type: MessageType::MapMessage,
-      body_text: None,
-      body_binary: None,
-      body_map: Some(msg.body),
-      header: msg.header.clone(),
-      message_pointer: None,
-      reply_to: None,
-    }
-  }
+/// represents a typed value, which is used for message header and message properties
+#[allow(dead_code)]
+#[derive(Debug,Clone,Serialize, Deserialize, PartialEq)]
+pub enum TypedValue {
+  /// represents a String Value
+  String(String),
+  /// represents a integer Value
+  Integer(i32),
+  /// represents a long Value
+  Long(i64),
+  /// represents a float Value
+  Float(f32),
+  /// represents a double Value
+  Double(f64),
+  /// represents a binary Value
+  Binary(Vec<u8>),
+  /// represents a MapMessage Value
+  Map(MapMessage),
+  /// represents a boolean Value
+  Boolean(bool),
 }
 
 impl Message{
   fn destroy(&self){
-    match self.message_pointer{
-      Some(pointer) => {
-        unsafe{
-          let status = tibco_ems_sys::tibemsMsg_Destroy(pointer);
-          match status {
-            tibems_status::TIBEMS_OK => trace!("tibemsMsg_Destroy: {:?}",status),
-            _ => error!("tibemsMsg_Destroy: {:?}",status),
-          }
+    let destroy_msg = | pointer: usize| unsafe {
+      let status = tibco_ems_sys::tibemsMsg_Destroy(pointer);
+      match status {
+        tibems_status::TIBEMS_OK => trace!("tibemsMsg_Destroy: {:?}",status),
+        _ => error!("tibemsMsg_Destroy: {:?}",status),
+      }
+    };
+    match self {
+      Message::TextMessage(msg) => {
+        match msg.pointer {
+          Some(pointer) => {
+            destroy_msg(pointer);
+          },
+          None => {},
         }
       },
-      None => {}
+      Message::BytesMessage(msg) => {
+        match msg.pointer {
+          Some(pointer) => {
+            destroy_msg(pointer);
+          },
+          None => {},
+        }
+      },
+      Message::MapMessage(msg) => {
+        match msg.pointer {
+          Some(pointer) => {
+            destroy_msg(pointer);
+          },
+          None => {},
+        }
+      },
     }
   }
   /// confirms the message by invoking tibemsMsg_Acknowledge
   pub fn confirm(&self){
-    match self.message_pointer{
-      Some(pointer) => {
-        unsafe{
-          let status = tibco_ems_sys::tibemsMsg_Acknowledge(pointer);
-          match status {
-            tibems_status::TIBEMS_OK => trace!("tibemsMsg_Acknowledge: {:?}",status),
-            _ => error!("tibemsMsg_Acknowledge: {:?}",status),
-          }
+    let ack_msg = |pointer:usize| unsafe {
+      let status = tibco_ems_sys::tibemsMsg_Acknowledge(pointer);
+      match status {
+        tibems_status::TIBEMS_OK => trace!("tibemsMsg_Acknowledge: {:?}",status),
+        _ => error!("tibemsMsg_Acknowledge: {:?}",status),
+      }
+    };
+    match self {
+      Message::TextMessage(msg) => {
+        match msg.pointer {
+          Some(pointer) => {
+            ack_msg(pointer);
+          },
+          None => {},
         }
       },
-      None => {}
+      Message::BytesMessage(msg) => {
+        match msg.pointer {
+          Some(pointer) => {
+            ack_msg(pointer);
+          },
+          None => {},
+        }
+      },
+      Message::MapMessage(msg) => {
+        match msg.pointer {
+          Some(pointer) => {
+            ack_msg(pointer);
+          },
+          None => {},
+        }
+      },
     }
   }
   /// rolls the message back by invoking tibemsMsg_Recover
   pub fn rollback(&self){
-    match self.message_pointer{
-      Some(pointer) => {
-        unsafe{
-          let status = tibco_ems_sys::tibemsMsg_Recover(pointer);
-          match status {
-            tibems_status::TIBEMS_OK => trace!("tibemsMsg_Recover: {:?}",status),
-            _ => error!("tibemsMsg_Recover: {:?}",status),
-          }
+    let recover = |pointer: usize| unsafe{
+      let status = tibco_ems_sys::tibemsMsg_Recover(pointer);
+      match status {
+        tibems_status::TIBEMS_OK => trace!("tibemsMsg_Recover: {:?}",status),
+        _ => error!("tibemsMsg_Recover: {:?}",status),
+      }
+    };
+    match self {
+      Message::TextMessage(msg) => {
+        match msg.pointer {
+          Some(pointer) => {
+            recover(pointer);
+          },
+          None => {},
         }
       },
-      None => {}
+      Message::BytesMessage(msg) => {
+        match msg.pointer {
+          Some(pointer) => {
+            recover(pointer);
+          },
+          None => {},
+        }
+      },
+      Message::MapMessage(msg) => {
+        match msg.pointer {
+          Some(pointer) => {
+            recover(pointer);
+          },
+          None => {},
+        }
+      },
     }
   }
 }
@@ -949,102 +752,96 @@ impl Drop for Message {
 }
 
 fn build_message_pointer_from_message(message: &Message) -> usize {
-  let mut msg: usize = 0;
+  let mut msg_pointer: usize = 0;
   unsafe{
-    match message.message_type {
-      MessageType::TextMessage => {
-        let status = tibco_ems_sys::tibemsTextMsg_Create(&mut msg);
+    match message {
+      Message::TextMessage(msg) => {
+        let status = tibco_ems_sys::tibemsTextMsg_Create(&mut msg_pointer);
         match status {
           tibems_status::TIBEMS_OK => trace!("tibemsTextMsg_Create: {:?}",status),
           _ => error!("tibemsTextMsg_Create: {:?}",status),
         }
-        let c_text = CString::new(message.body_text.clone().unwrap()).unwrap();
-        let status = tibco_ems_sys::tibemsTextMsg_SetText(msg,c_text.as_ptr());
+        let c_text = CString::new(msg.body.clone()).unwrap();
+        let status = tibco_ems_sys::tibemsTextMsg_SetText(msg_pointer,c_text.as_ptr());
         match status {
           tibems_status::TIBEMS_OK => trace!("tibemsTextMsg_SetText: {:?}",status),
           _ => error!("tibemsTextMsg_SetText: {:?}",status),
         }
       },
-      MessageType::BytesMessage => {
-        let status = tibco_ems_sys::tibemsBytesMsg_Create(&mut msg);
+      Message::BytesMessage(msg) => {
+        let status = tibco_ems_sys::tibemsBytesMsg_Create(&mut msg_pointer);
         match status {
           tibems_status::TIBEMS_OK => trace!("tibemsBytesMsg_Create: {:?}",status),
           _ => error!("tibemsBytesMsg_Create: {:?}",status),
         }
-        let content = message.body_binary.clone().unwrap();
+        let content = msg.body.clone();
         let body_size = content.len();
         let body_ptr = content.as_ptr() as *const c_void;
-        let status = tibco_ems_sys::tibemsBytesMsg_SetBytes(msg,body_ptr,body_size as u32);
+        let status = tibco_ems_sys::tibemsBytesMsg_SetBytes(msg_pointer,body_ptr,body_size as u32);
         match status {
           tibems_status::TIBEMS_OK => trace!("tibemsBytesMsg_SetBytes: {:?}",status),
           _ => error!("tibemsBytesMsg_SetBytes: {:?}",status),
         }
       },
-      MessageType::MapMessage => {
-        let status = tibco_ems_sys::tibemsMapMsg_Create(&mut msg);
+      Message::MapMessage(msg) => {
+        let status = tibco_ems_sys::tibemsMapMsg_Create(&mut msg_pointer);
         match status {
           tibems_status::TIBEMS_OK => trace!("tibemsMapMsg_Create: {:?}",status),
           _ => error!("tibemsMapMsg_Create: {:?}",status),
         }
-        for (key,val) in message.body_map.clone().unwrap() {
+        for (key,val) in msg.body.clone() {
           let c_name = CString::new(key).unwrap();
-          match val.value_type {
-            PropertyType::Boolean => {
-              let result = val.bool_value().unwrap();
-              let val;
-              if result {
-                val = tibems_bool::TIBEMS_TRUE;
+          match val {
+            TypedValue::Boolean(value) => {
+              let status;
+              if value {
+                status = tibco_ems_sys::tibemsMapMsg_SetBoolean(msg_pointer, c_name.as_ptr(), tibems_bool::TIBEMS_TRUE);
               }else{
-                val = tibems_bool::TIBEMS_FALSE;
+                status = tibco_ems_sys::tibemsMapMsg_SetBoolean(msg_pointer, c_name.as_ptr(), tibems_bool::TIBEMS_FALSE);
               }
-              let status = tibco_ems_sys::tibemsMapMsg_SetBoolean(msg, c_name.as_ptr(), val);
               match status {
                 tibems_status::TIBEMS_OK => trace!("tibemsMapMsg_SetBoolean: {:?}",status),
                 _ => error!("tibemsMapMsg_SetBoolean: {:?}",status),
               }
             },
-            PropertyType::String => {
-              let c_value = CString::new(val.string_value().unwrap()).unwrap();
-              let status = tibco_ems_sys::tibemsMapMsg_SetString(msg, c_name.as_ptr(), c_value.as_ptr());
+            TypedValue::String(value) => {
+              let c_value = CString::new(value).unwrap();
+              let status = tibco_ems_sys::tibemsMapMsg_SetString(msg_pointer, c_name.as_ptr(), c_value.as_ptr());
               match status {
                 tibems_status::TIBEMS_OK => trace!("tibemsMapMsg_SetString: {:?}",status),
                 _ => error!("tibemsMapMsg_SetString: {:?}",status),
               }
             },
-            PropertyType::Integer => {
-              let value = val.int_value().unwrap();
-              let status = tibco_ems_sys::tibemsMapMsg_SetInt(msg, c_name.as_ptr(), value);
+            TypedValue::Integer(value) => {
+              let status = tibco_ems_sys::tibemsMapMsg_SetInt(msg_pointer, c_name.as_ptr(), value);
               match status {
                 tibems_status::TIBEMS_OK => trace!("tibemsMapMsg_SetInt: {:?}",status),
                 _ => error!("tibemsMapMsg_SetInt: {:?}",status),
               }
             },
-            PropertyType::Long => {
-              let value = val.long_value().unwrap();
-              let status = tibco_ems_sys::tibemsMapMsg_SetLong(msg, c_name.as_ptr(), value);
+            TypedValue::Long(value) => {
+              let status = tibco_ems_sys::tibemsMapMsg_SetLong(msg_pointer, c_name.as_ptr(), value);
               match status {
                 tibems_status::TIBEMS_OK => trace!("tibemsMapMsg_SetLong: {:?}",status),
                 _ => error!("tibemsMapMsg_SetLong: {:?}",status),
               }
             },
-            PropertyType::Float => {
-              let value = val.float_value().unwrap();
-              let status = tibco_ems_sys::tibemsMapMsg_SetFloat(msg, c_name.as_ptr(), value);
+            TypedValue::Float(value) => {
+              let status = tibco_ems_sys::tibemsMapMsg_SetFloat(msg_pointer, c_name.as_ptr(), value);
               match status {
                 tibems_status::TIBEMS_OK => trace!("tibemsMapMsg_SetFloat: {:?}",status),
                 _ => error!("tibemsMapMsg_SetFloat: {:?}",status),
               }
             },
 
-            PropertyType::Double => {
-              let value = val.double_value().unwrap();
-              let status = tibco_ems_sys::tibemsMapMsg_SetDouble(msg, c_name.as_ptr(), value);
+            TypedValue::Double(value) => {
+              let status = tibco_ems_sys::tibemsMapMsg_SetDouble(msg_pointer, c_name.as_ptr(), value);
               match status {
                 tibems_status::TIBEMS_OK => trace!("tibemsMapMsg_SetDouble: {:?}",status),
                 _ => error!("tibemsMapMsg_SetDouble: {:?}",status),
               }
             },
-            PropertyType::Binary => {
+            TypedValue::Binary(_value) => {
               //TODO implement
               // let status = tibco_ems_sys::tibemsMapMsg_SetBytes(message: usize, name: *const c_char, bytes: *mut c_void, bytesSize: u64)Long(msg, c_name.as_ptr(), value);
               // match status {
@@ -1053,55 +850,59 @@ fn build_message_pointer_from_message(message: &Message) -> usize {
               // }
             }
             _ => {
-              panic!("missing map message type implementation for {:?}",val.value_type);
+              panic!("missing map message type implementation for {:?}",val);
             },
           }
         }
       },
     }
     //set header
-    match message.header.clone() {
+    let header = match message {
+      Message::TextMessage(msg) => msg.header.clone(),
+      Message::BytesMessage(msg) => msg.header.clone(),
+      Message::MapMessage(msg) => msg.header.clone(),
+    };
+    match header {
       Some(headers)=>{
         for (key, val) in &headers {
           let c_name = CString::new(key.to_string()).unwrap();
-          match val.value_type {
-            PropertyType::String => {
-              let c_val = CString::new(val.string_value().unwrap()).unwrap();
-              let status = tibco_ems_sys::tibemsMsg_SetStringProperty(msg, c_name.as_ptr(), c_val.as_ptr());
+          match val {
+            TypedValue::String(value) => {
+              let c_val = CString::new(value.as_bytes()).unwrap();
+              let status = tibco_ems_sys::tibemsMsg_SetStringProperty(msg_pointer, c_name.as_ptr(), c_val.as_ptr());
               match status {
                 tibems_status::TIBEMS_OK => trace!("tibemsMsg_SetStringProperty: {:?}",status),
                 _ => error!("tibemsMsg_SetStringProperty: {:?}",status),
               }    
             },
-            PropertyType::Boolean => {
-              let mut bool_value = tibems_bool::TIBEMS_FALSE;
-              if val.bool_value().unwrap() {
-                bool_value = tibems_bool::TIBEMS_TRUE;
+            TypedValue::Boolean(value) => {
+              let status;
+              if *value {
+                status = tibco_ems_sys::tibemsMsg_SetBooleanProperty(msg_pointer, c_name.as_ptr(), tibems_bool::TIBEMS_TRUE);
+              } else {
+                status = tibco_ems_sys::tibemsMsg_SetBooleanProperty(msg_pointer, c_name.as_ptr(), tibems_bool::TIBEMS_FALSE);
               }
-              let status = tibco_ems_sys::tibemsMsg_SetBooleanProperty(msg, c_name.as_ptr(), bool_value);
               match status {
                 tibems_status::TIBEMS_OK => trace!("tibemsMsg_SetBooleanProperty: {:?}",status),
                 _ => error!("tibemsMsg_SetBooleanProperty: {:?}",status),
               }
             },
-            PropertyType::Integer => {
-              let int_val = val.int_value().unwrap();
-              let status = tibco_ems_sys::tibemsMsg_SetIntProperty(msg, c_name.as_ptr(), int_val);
+            TypedValue::Integer(value) => {
+              let status = tibco_ems_sys::tibemsMsg_SetIntProperty(msg_pointer, c_name.as_ptr(), *value);
               match status {
                 tibems_status::TIBEMS_OK => trace!("tibemsMsg_SetIntProperty: {:?}",status),
                 _ => error!("tibemsMsg_SetIntProperty: {:?}",status),
               }    
             },
-            PropertyType::Long => {
-              let long_val = val.long_value().unwrap();
-              let status = tibco_ems_sys::tibemsMsg_SetLongProperty(msg, c_name.as_ptr(), long_val);
+            TypedValue::Long(value) => {
+              let status = tibco_ems_sys::tibemsMsg_SetLongProperty(msg_pointer, c_name.as_ptr(), *value);
               match status {
                 tibems_status::TIBEMS_OK => trace!("tibemsMsg_SetLongProperty: {:?}",status),
                 _ => error!("tibemsMsg_SetLongProperty: {:?}",status),
               }    
             },
             _ => {
-              panic!("missing property type implementation for {:?}",val.value_type);
+              panic!("missing property type implementation for {:?}",val);
             }
           }
         }
@@ -1109,11 +910,12 @@ fn build_message_pointer_from_message(message: &Message) -> usize {
       None => {},
     }
   }
-  msg
+  msg_pointer
 }
 
 fn build_message_from_pointer(msg_pointer: usize) -> Message {
-  let mut msg;
+  let mut msg: Message;
+  let mut header: HashMap<String,TypedValue> = HashMap::new();
   unsafe{
     let mut msg_type: tibemsMsgType = tibemsMsgType::TIBEMS_TEXT_MESSAGE;
     let status = tibco_ems_sys::tibemsMsg_GetBodyType(msg_pointer, &mut msg_type);
@@ -1123,7 +925,6 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
     }
     match msg_type {
       tibemsMsgType::TIBEMS_TEXT_MESSAGE => {
-        let mut header: HashMap<String,TypedValue> = HashMap::new();
         let buf_vec:Vec<i8> = vec![0; 0];
         let buf_ref: *const std::os::raw::c_char = buf_vec.as_ptr();
         let status = tibco_ems_sys::tibemsTextMsg_GetText(msg_pointer, & buf_ref);
@@ -1138,22 +939,15 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
           _ => error!("tibemsMsg_GetMessageID: {:?}",status),
         }
         let message_id = CStr::from_ptr(buf_ref).to_str().unwrap();
-        header.insert("MessageID".to_string(),TypedValue{
-          value_type: PropertyType::String,
-          value: message_id.to_string().as_bytes().to_vec()
-        });
-        msg = Message{
-          message_type: MessageType::TextMessage,
-          body_text: Some(content.to_string()),
-          body_binary: None,
-          body_map: None,
-          header: Some(header),
-          message_pointer: Some(msg_pointer),
+        header.insert("MessageID".to_string(),TypedValue::String(message_id.to_string()));
+        msg = Message::TextMessage(TextMessage{
+          body: content.to_string(),
+          header: None,
+          pointer: Some(msg_pointer),
           reply_to: None,
-        };
+        });
       },
       tibemsMsgType::TIBEMS_MAP_MESSAGE => {
-        let mut header: HashMap<String, TypedValue> = HashMap::new();
         let buf_vec:Vec<i8> = vec![0; 0];
         let buf_ref: *const std::os::raw::c_char = buf_vec.as_ptr();
         let status = tibco_ems_sys::tibemsMsg_GetMessageID(msg_pointer, &buf_ref);
@@ -1164,10 +958,7 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
         //admin messages do not have a message id
         if buf_vec.len() > 0 {
           let message_id = CStr::from_ptr(buf_ref).to_str().unwrap();
-          header.insert("MessageID".to_string(),TypedValue{
-            value_type: PropertyType::String,
-            value: message_id.to_string().as_bytes().to_vec(),
-          });  
+          &header.insert("MessageID".to_string(),TypedValue::String(message_id.to_string()));  
         }
         let mut names_pointer: usize = 0;
         trace!("tibemsMapMsg_GetMapNames");
@@ -1184,7 +975,7 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
           match status {
             tibems_status::TIBEMS_OK =>{
               let header_name = CStr::from_ptr(buf_ref).to_str().unwrap();
-              trace!("getting value for property: {}",header_name.to_string());
+              trace!("getting value for property: {}",header_name);
               let mut val_buf_vec:Vec<i8> = vec![0; 0];
               let mut val_buf_ref: *mut std::os::raw::c_char = val_buf_vec.as_mut_ptr();
               let status = tibco_ems_sys::tibemsMapMsg_GetString(msg_pointer, buf_ref, &mut val_buf_ref);
@@ -1193,10 +984,7 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
                   trace!("tibemsMapMsg_GetString: {:?}",status);
                   if !val_buf_ref.is_null() {
                     let header_value = CStr::from_ptr(val_buf_ref).to_str().unwrap();
-                    body_entries.insert(header_name.to_string(),TypedValue{
-                      value_type: PropertyType::String,
-                      value: header_value.as_bytes().to_vec()
-                    });  
+                    body_entries.insert(header_name.to_string(),TypedValue::String(header_value.to_string()));  
                   }
                 },
                 tibems_status::TIBEMS_CONVERSION_FAILED => {
@@ -1207,12 +995,14 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
                     _ => error!("tibemsMapMsg_GetMapMsg: {:?}",status),
                   }
                   let mut raw_message = build_message_from_pointer(msg2);
-                  raw_message.message_pointer = None;
-                  let header_value: MapMessage = raw_message.into();
-                  body_entries.insert(header_name.to_string(),TypedValue{
-                    value_type: PropertyType::Map,
-                    value: bincode::serialize(&header_value).unwrap(),
-                  });
+                  match &mut raw_message {
+                    Message::TextMessage(_msg) => {},
+                    Message::BytesMessage(_msg) => {},
+                    Message::MapMessage(msg) => {
+                      msg.pointer=None;
+                      body_entries.insert(header_name.to_string(), TypedValue::Map(msg.clone()));
+                    },
+                  }
                 },
                 _ => error!("tibemsMapMsg_GetString: {:?}",status),
               }
@@ -1232,15 +1022,20 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
           tibems_status::TIBEMS_OK => trace!("tibemsMsgEnum_Destroy: {:?}",status),
           _ => error!("tibemsMsgEnum_Destroy: {:?}",status),
         }
-        msg = Message{
-          message_type: MessageType::MapMessage,
-          body_text: None,
-          body_binary: None,
-          body_map: Some(body_entries),
-          header: Some(header),
-          message_pointer: Some(msg_pointer),
+        msg = Message::MapMessage(MapMessage{
+          body: body_entries,
+          header: None,
+          pointer: Some(msg_pointer),
           reply_to: None,
-        };
+        });
+      },
+      tibemsMsgType::TIBEMS_BYTES_MESSAGE => {
+        msg = Message::BytesMessage(BytesMessage{
+          body: vec![],
+          header: None,
+          pointer: Some(msg_pointer),
+          reply_to: None,
+        });
       },
       _ => {
         //unknown
@@ -1269,12 +1064,7 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
             _ => error!("tibemsMsg_GetStringProperty: {:?}",status),
           }
           let header_value = CStr::from_ptr(val_buf_ref).to_str().unwrap();
-          let mut header = msg.header.clone().unwrap();
-          header.insert(header_name.to_string(),TypedValue{
-            value_type: PropertyType::String,
-            value: header_value.to_string().as_bytes().to_vec(),
-          });
-          msg.header=Some(header);
+          header.insert(header_name.to_string(),TypedValue::String(header_value.to_string()));
         }
         tibems_status::TIBEMS_NOT_FOUND =>{
           break;
@@ -1289,6 +1079,12 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
     match status {
       tibems_status::TIBEMS_OK => trace!("tibemsMsgEnum_Destroy: {:?}",status),
       _ => error!("tibemsMsgEnum_Destroy: {:?}",status),
+    }
+    //add header to message
+    match &mut msg {
+      Message::TextMessage(msg) => msg.header=Some(header),
+      Message::BytesMessage(msg) => msg.header=Some(header),
+      Message::MapMessage(msg) => msg.header=Some(header),
     }
     // look for replyTo header
     let mut reply_destination: usize = 0;
@@ -1313,25 +1109,27 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
         tibems_status::TIBEMS_OK => trace!("tibemsDestination_GetName: {:?}",status),
         _ => error!("tibemsDestination_GetName: {:?}",status),
       }
-      let destination_name = CStr::from_ptr(buf_ref).to_str().unwrap();
+      let destination_name: String = CStr::from_ptr(buf_ref).to_str().unwrap().to_string();
+      let reply_destination_obj: Option<Destination>;
       match destination_type {
         tibemsDestinationType::TIBEMS_QUEUE =>{
-          msg.reply_to = Some(Destination{
-            destination_type: DestinationType::Queue,
-            destination_name: destination_name.to_string(),
-          });
+          reply_destination_obj = Some(Destination::Queue(destination_name));
         },
         tibemsDestinationType::TIBEMS_TOPIC =>{
-          msg.reply_to = Some(Destination{
-            destination_type: DestinationType::Topic,
-            destination_name: destination_name.to_string(),
-          });
+          reply_destination_obj = Some(Destination::Topic(destination_name));
         },
         _ =>{
           //ignore unknown type
+          reply_destination_obj = None;
         }
       }
-    }
+      //add replyTo to message
+      match &mut msg {
+        Message::TextMessage(msg) => msg.reply_to=reply_destination_obj,
+        Message::BytesMessage(msg) => msg.reply_to=reply_destination_obj,
+        Message::MapMessage(msg) => msg.reply_to=reply_destination_obj,
+      }
+    }      
   }
   msg
 }

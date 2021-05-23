@@ -1,5 +1,4 @@
 use tibco_ems::Destination;
-use tibco_ems::DestinationType;
 use tibco_ems::BytesMessage;
 
 fn main() {
@@ -8,15 +7,13 @@ fn main() {
   let password="admin";
 
   let connection = tibco_ems::connect(url,user,password).unwrap();
-  {
-    let session = connection.session().unwrap();
+  let session = connection.session().unwrap();
 
-    let msg = BytesMessage{body:vec![1,2,3],header: None};
+  let msg = BytesMessage{
+    body: vec![1,2,3],
+    ..Default::default()
+  };
 
-    let destination = Destination{
-      destination_type: DestinationType::Queue,
-      destination_name: "myqueue".to_string(),
-    };
-    let _ignore = session.send_message(destination, msg.into());
-  }
+  let destination = Destination::Queue("myqueue".to_string());
+  let _ignore = session.send_message(&destination, msg);
 }

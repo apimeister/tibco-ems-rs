@@ -1,18 +1,25 @@
 [package]
 name = "tibco_ems"
-version = "0.2.16"
+version = "0.3.0"
 authors = ["Jens Walter <jens@apimeister.com>"]
 edition = "2018"
 license = "Apache-2.0"
 keywords = ["tibco","ems"]
 repository = "https://github.com/apimeister/tibco-ems-rs/"
+documentation = "https://docs.rs/tibco_ems"
 description = "A high level API for the Tibco EMS."
 
 [dependencies]
 log = "0.4"
 tibco_ems-sys = "0.1.13"
 serde = { version = "1", features = ["derive"] }
-bincode = "1"
+futures = { version = "0.3", optional = true }
+enum_extract = "0.1"
+
+[features]
+streaming = ["futures"]
 
 [dev-dependencies]
 env_logger = "0.8"
+tokio = { version = "1", features = ["full"] }
+futures = { version = "0.3" }

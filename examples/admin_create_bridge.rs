@@ -1,7 +1,7 @@
 use tibco_ems::admin::QueueInfo;
 use tibco_ems::admin::TopicInfo;
 use tibco_ems::admin::BridgeInfo;
-use tibco_ems::DestinationType;
+use tibco_ems::Destination;
 
 fn main() {
   let url = "tcp://localhost:7222";
@@ -25,10 +25,8 @@ fn main() {
   let _result = tibco_ems::admin::create_queue(&session,&queue);
   //create bridge
   let bridge = BridgeInfo{
-    source_type: DestinationType::Topic,
-    source_name: "test.t".to_string(),
-    target_type: DestinationType::Queue,
-    target_name: "test.q".to_string(),
+    source: Destination::Topic("test.t".to_string()),
+    target: Destination::Queue("test.q".to_string()),
     selector: None,
   };
   let result = tibco_ems::admin::create_bridge(&session,&bridge);

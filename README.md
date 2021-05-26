@@ -15,7 +15,6 @@ Sending a text message to a queue.
 
 ```rust
 use tibco_ems::Destination;
-use tibco_ems::DestinationType;
 use tibco_ems::TextMessage;
 
 fn main() {
@@ -24,17 +23,16 @@ fn main() {
   let password="admin";
 
   let connection = tibco_ems::connect(url,user,password).unwrap();
-  {
-    let session = connection.session().unwrap();
+  let session = connection.session().unwrap();
 
-    let msg = TextMessage{body:"hallo welt".to_string(),header: None};
+  let msg = TextMessage{
+    body:"hallo welt".to_string(),
+    ..Default::default()
+  };
 
-    let destination = Destination{
-      destination_type: DestinationType::Queue,
-      destination_name: "myqueue".to_string(),
-    };
-    let _ignore = session.send_message(destination, msg.into());
-  }
+  let destination = Destination::Queue("myqueue".to_string());
+  
+  let _ignore = session.send_message(&destination, msg);
 }
 ```
 
@@ -42,9 +40,7 @@ Receiving a text message from a queue.
 
 ```rust
 use tibco_ems::Destination;
-use tibco_ems::DestinationType;
-use tibco_ems::TextMessage;
-use tibco_ems::MessageType;
+use tibco_ems::Message;
 
 fn main() {
   let url = "tcp://localhost:7222";
@@ -55,11 +51,8 @@ fn main() {
   {
     let session = connection.session().unwrap();
 
-    let destination = Destination{
-      destination_type: DestinationType::Queue,
-      destination_name: "myqueue".to_string(),
-    };
-    let consumer = session.queue_consumer(destination,None).unwrap();
+    let destination = Destination::Queue("myqueue".to_string());
+    let consumer = session.queue_consumer(&destination, None).unwrap();
     
     println!("waiting 10 seconds for a message");
     let msg_result = consumer.receive_message(Some(10000));
@@ -68,10 +61,9 @@ fn main() {
       Ok(result_value) => {
         match result_value {
           Some(message) => {
-            match message.message_type {
-              MessageType::TextMessage =>{
+            match &message {
+              Message::TextMessage(text_message) =>{
                 println!("received text message");
-                let text_message = TextMessage::from(message);
                 println!("content: {}", text_message.body);
               },
               _ => {

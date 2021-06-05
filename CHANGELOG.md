@@ -1,3 +1,7 @@
+# 0.3.2 2021-06-05
+
+* make connection handle atomic (type changed from RC<usize> to Arc<usize>)
+
 # 0.3.1 2021-05-26
 
 * fix samples in the readme

@@ -1,6 +1,6 @@
 [package]
 name = "tibco_ems"
-version = "0.3.1"
+version = "0.3.2"
 authors = ["Jens Walter <jens@apimeister.com>"]
 edition = "2018"
 license = "Apache-2.0"
@@ -23,3 +23,7 @@ streaming = ["futures"]
 env_logger = "0.8"
 tokio = { version = "1", features = ["full"] }
 futures = { version = "0.3" }
+
+[[example]]
+name = "stream_text_message"
+required-features = ["streaming"]

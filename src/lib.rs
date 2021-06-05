@@ -12,7 +12,7 @@ use tibco_ems_sys::tibems_bool;
 use tibco_ems_sys::tibemsMsgType;
 use log::{trace, error};
 use serde::{Serialize, Deserialize};
-use std::rc::Rc;
+use std::sync::Arc;
 use std::ops::Deref;
 
 pub mod admin;
@@ -24,7 +24,7 @@ pub mod stream;
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct Connection{
-  pointer: Rc<usize>,
+  pointer: Arc<usize>,
 }
 
 /// holds the native Session pointer
@@ -167,7 +167,7 @@ pub fn connect(url: &str, user: &str, password: &str) -> Result<Connection, Erro
       },
     }
   }
-  let conn = Connection{pointer: Rc::from(connection_pointer)};
+  let conn = Connection{pointer: Arc::from(connection_pointer)};
   Ok(conn)
 }
 

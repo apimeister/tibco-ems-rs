@@ -317,7 +317,7 @@ impl Consumer {
 //
 
 impl Session {
-  /// open a message consumer
+  /// open a message consumer for a queue
   pub fn queue_consumer(&self, destination: &Destination, selector: Option<&str>) -> Result<Consumer, Error> {
     let consumer: Consumer;
     let mut destination_pointer: usize = 0;
@@ -362,6 +362,96 @@ impl Session {
         _ => {
           let status_str = format!("{:?}",status);
           error!("tibemsSession_CreateConsumer: {}",status_str);
+          return Err(Error::new(ErrorKind::Other, format!("create consumer failed: {}",status_str)));
+        },
+      }
+      consumer = Consumer{pointer: consumer_pointer};
+    }
+    Ok(consumer)
+  }
+
+  /// open a message consumer for a topic
+  pub fn topic_consumer(&self, destination: &Destination, subscription_name: &str, selector: Option<&str>) -> Result<Consumer, Error> {
+    let consumer: Consumer;
+    let mut destination_pointer: usize = 0;
+    unsafe{
+      //create destination
+      match destination {
+        Destination::Topic(name) => {
+          let c_destination = CString::new(name.clone()).unwrap();
+          let status = tibco_ems_sys::tibemsDestination_Create(&mut destination_pointer, tibemsDestinationType::TIBEMS_TOPIC, c_destination.as_ptr());
+          match status {
+            tibems_status::TIBEMS_OK => trace!("tibemsDestination_Create: {:?}",status),
+            _ => {
+              let status_str = format!("{:?}",status);
+              error!("tibemsDestination_Create: {}",status_str);
+              return Err(Error::new(ErrorKind::Other, format!("create destination failed: {}",status_str)));
+            },
+          }
+        },
+        Destination::Queue(_) => {
+          return Err(Error::new(ErrorKind::Other, format!("destination is not of type topic")));
+        }
+      }
+      //open consumer
+      let mut consumer_pointer:usize = 0;
+      let c_subscription_name = CString::new(subscription_name.clone()).unwrap();
+      let c_selector:CString;
+      match selector {
+        Some(val) => c_selector=CString::new(val).unwrap(),
+        _ => c_selector = CString::new("".to_string()).unwrap(),
+      }
+      let status = tibco_ems_sys::tibemsSession_CreateSharedConsumer(self.pointer, &mut consumer_pointer,destination_pointer, c_subscription_name.as_ptr(), c_selector.as_ptr());
+      match status {
+        tibems_status::TIBEMS_OK => trace!("tibemsSession_CreateSharedConsumer: {:?}",status),
+        _ => {
+          let status_str = format!("{:?}",status);
+          error!("tibemsSession_CreateSharedConsumer: {}",status_str);
+          return Err(Error::new(ErrorKind::Other, format!("create consumer failed: {}",status_str)));
+        },
+      }
+      consumer = Consumer{pointer: consumer_pointer};
+    }
+    Ok(consumer)
+  }
+
+  /// open a durable message consumer for a topic
+  pub fn topic_durable_consumer(&self, destination: &Destination, durable_name: &str, selector: Option<&str>) -> Result<Consumer, Error> {
+    let consumer: Consumer;
+    let mut destination_pointer: usize = 0;
+    unsafe{
+      //create destination
+      match destination {
+        Destination::Topic(name) => {
+          let c_destination = CString::new(name.clone()).unwrap();
+          let status = tibco_ems_sys::tibemsDestination_Create(&mut destination_pointer, tibemsDestinationType::TIBEMS_TOPIC, c_destination.as_ptr());
+          match status {
+            tibems_status::TIBEMS_OK => trace!("tibemsDestination_Create: {:?}",status),
+            _ => {
+              let status_str = format!("{:?}",status);
+              error!("tibemsDestination_Create: {}",status_str);
+              return Err(Error::new(ErrorKind::Other, format!("create destination failed: {}",status_str)));
+            },
+          }
+        },
+        Destination::Queue(_) => {
+          return Err(Error::new(ErrorKind::Other, format!("destination is not of type topic")));
+        }
+      }
+      //open consumer
+      let mut consumer_pointer:usize = 0;
+      let c_durable_name = CString::new(durable_name.clone()).unwrap();
+      let c_selector:CString;
+      match selector {
+        Some(val) => c_selector=CString::new(val).unwrap(),
+        _ => c_selector = CString::new("".to_string()).unwrap(),
+      }
+      let status = tibco_ems_sys::tibemsSession_CreateSharedDurableConsumer(self.pointer, &mut consumer_pointer, destination_pointer, c_durable_name.as_ptr(), c_selector.as_ptr());
+      match status {
+        tibems_status::TIBEMS_OK => trace!("tibemsSession_CreateSharedDurableConsumer: {:?}",status),
+        _ => {
+          let status_str = format!("{:?}",status);
+          error!("tibemsSession_CreateSharedDurableConsumer: {}",status_str);
           return Err(Error::new(ErrorKind::Other, format!("create consumer failed: {}",status_str)));
         },
       }

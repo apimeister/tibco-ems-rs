@@ -1,3 +1,7 @@
+# 0.3.3 2021-06-09
+
+* topic subcription support
+
 # 0.3.2 2021-06-05
 
 * make connection handle atomic (type changed from RC<usize> to Arc<usize>)

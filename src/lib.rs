@@ -1131,6 +1131,15 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
         });
       },
       tibemsMsgType::TIBEMS_BYTES_MESSAGE => {
+        let buf_vec:Vec<i8> = vec![0; 0];
+        let buf_ref: *const std::os::raw::c_char = buf_vec.as_ptr();
+        let status = tibco_ems_sys::tibemsMsg_GetMessageID(msg_pointer, &buf_ref);
+        match status {
+          tibems_status::TIBEMS_OK => trace!("tibemsMsg_GetMessageID: {:?}",status),
+          _ => error!("tibemsMsg_GetMessageID: {:?}",status),
+        }
+        let message_id = CStr::from_ptr(buf_ref).to_str().unwrap();
+        header.insert("MessageID".to_string(),TypedValue::String(message_id.to_string()));
         msg = Message::BytesMessage(BytesMessage{
           body: vec![],
           header: None,
@@ -1140,6 +1149,15 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
         });
       },
       tibemsMsgType::TIBEMS_OBJECT_MESSAGE => {
+        let buf_vec:Vec<i8> = vec![0; 0];
+        let buf_ref: *const std::os::raw::c_char = buf_vec.as_ptr();
+        let status = tibco_ems_sys::tibemsMsg_GetMessageID(msg_pointer, &buf_ref);
+        match status {
+          tibems_status::TIBEMS_OK => trace!("tibemsMsg_GetMessageID: {:?}",status),
+          _ => error!("tibemsMsg_GetMessageID: {:?}",status),
+        }
+        let message_id = CStr::from_ptr(buf_ref).to_str().unwrap();
+        header.insert("MessageID".to_string(),TypedValue::String(message_id.to_string()));
         msg = Message::BytesMessage(BytesMessage{
           body: vec![],
           header: None,

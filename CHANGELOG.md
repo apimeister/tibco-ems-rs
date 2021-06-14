@@ -1,6 +1,7 @@
-# 0.3.5 2021-06-14
+# 0.3.6 2021-06-14
 
 * fixed: destination header returned wrong value
+* add MessageID to header
 
 # 0.3.4 2021-06-14
 

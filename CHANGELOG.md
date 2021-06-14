@@ -1,3 +1,7 @@
+# 0.3.5 2021-06-14
+
+* fixed: destination header returned wrong value
+
 # 0.3.4 2021-06-14
 
 * add type object_message (handled an binary message internally)

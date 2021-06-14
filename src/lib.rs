@@ -1199,10 +1199,10 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
     }
     // look for JMSDestination header
     let mut jms_destination: usize = 0;
-    let status = tibco_ems_sys::tibemsMsg_GetReplyTo(msg_pointer, &mut jms_destination);
+    let status = tibco_ems_sys::tibemsMsg_GetDestination(msg_pointer, &mut jms_destination);
     match status {
-      tibems_status::TIBEMS_OK => trace!("tibemsMsg_GetReplyTo: {:?}",status),
-      _ => error!("tibemsMsg_GetReplyTo: {:?}",status),
+      tibems_status::TIBEMS_OK => trace!("tibemsMsg_GetDestination: {:?}",status),
+      _ => error!("tibemsMsg_GetDestination: {:?}",status),
     }
     if jms_destination != 0 {
       //has a destination

@@ -1,3 +1,9 @@
+# 0.3.4 2021-06-14
+
+* add type object_message (handled an binary message internally)
+* add destination to message header
+* reformat readme sample code
+
 # 0.3.3 2021-06-09
 
 * topic subcription support

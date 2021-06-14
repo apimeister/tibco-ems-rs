@@ -57,6 +57,8 @@ pub struct TextMessage {
   pub body: String,
   /// message header
   pub header: Option<HashMap<String, TypedValue>>,
+  /// message destination
+  pub destination: Option<Destination>,
   /// reply to header
   pub reply_to: Option<Destination>,
   /// point to the ems native object
@@ -68,6 +70,7 @@ impl Default for TextMessage{
     TextMessage{
       body: "".to_string(),
       header: None,
+      destination: None,
       reply_to: None,
       pointer: None,
     }  
@@ -81,6 +84,8 @@ pub struct BytesMessage {
   pub body: Vec<u8>,
   /// message header
   pub header: Option<HashMap<String, TypedValue>>,
+  /// message destination
+  pub destination: Option<Destination>,
   /// reply to header
   pub reply_to: Option<Destination>,
   /// point to the ems native object
@@ -92,6 +97,7 @@ impl Default for BytesMessage{
     BytesMessage{
       body: vec![],
       header: None,
+      destination: None,
       reply_to: None,
       pointer: None,
     }  
@@ -105,6 +111,8 @@ pub struct MapMessage {
   pub body: HashMap<String, TypedValue>,
   /// message header
   pub header: Option<HashMap<String, TypedValue>>,
+  /// message destination
+  pub destination: Option<Destination>,
   /// reply to header
   pub reply_to: Option<Destination>,
   /// point to the ems native object
@@ -116,6 +124,7 @@ impl Default for MapMessage{
     MapMessage{
       body: HashMap::new(),
       header: None,
+      destination: None,
       reply_to: None,
       pointer: None,
     }  
@@ -1034,6 +1043,7 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
           body: content.to_string(),
           header: None,
           pointer: Some(msg_pointer),
+          destination: None,
           reply_to: None,
         });
       },
@@ -1116,6 +1126,7 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
           body: body_entries,
           header: None,
           pointer: Some(msg_pointer),
+          destination: None,
           reply_to: None,
         });
       },
@@ -1124,6 +1135,16 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
           body: vec![],
           header: None,
           pointer: Some(msg_pointer),
+          destination: None,
+          reply_to: None,
+        });
+      },
+      tibemsMsgType::TIBEMS_OBJECT_MESSAGE => {
+        msg = Message::BytesMessage(BytesMessage{
+          body: vec![],
+          header: None,
+          pointer: Some(msg_pointer),
+          destination: None,
           reply_to: None,
         });
       },
@@ -1175,6 +1196,50 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
       Message::TextMessage(msg) => msg.header=Some(header),
       Message::BytesMessage(msg) => msg.header=Some(header),
       Message::MapMessage(msg) => msg.header=Some(header),
+    }
+    // look for JMSDestination header
+    let mut jms_destination: usize = 0;
+    let status = tibco_ems_sys::tibemsMsg_GetReplyTo(msg_pointer, &mut jms_destination);
+    match status {
+      tibems_status::TIBEMS_OK => trace!("tibemsMsg_GetReplyTo: {:?}",status),
+      _ => error!("tibemsMsg_GetReplyTo: {:?}",status),
+    }
+    if jms_destination != 0 {
+      //has a destination
+      let mut destination_type = tibemsDestinationType::TIBEMS_UNKNOWN;
+      let status = tibco_ems_sys::tibemsDestination_GetType(jms_destination, &mut destination_type);
+      match status {
+        tibems_status::TIBEMS_OK => trace!("tibemsDestination_GetType: {:?}",status),
+        _ => error!("tibemsDestination_GetType: {:?}",status),
+      }
+      let buf_size = 1024;
+      let buf_vec:Vec<i8> = vec![0; buf_size];
+      let buf_ref: *const std::os::raw::c_char = buf_vec.as_ptr();
+      let status = tibco_ems_sys::tibemsDestination_GetName(jms_destination, buf_ref, buf_size);
+      match status {
+        tibems_status::TIBEMS_OK => trace!("tibemsDestination_GetName: {:?}",status),
+        _ => error!("tibemsDestination_GetName: {:?}",status),
+      }
+      let destination_name: String = CStr::from_ptr(buf_ref).to_str().unwrap().to_string();
+      let jms_destination_obj: Option<Destination>;
+      match destination_type {
+        tibemsDestinationType::TIBEMS_QUEUE =>{
+          jms_destination_obj = Some(Destination::Queue(destination_name));
+        },
+        tibemsDestinationType::TIBEMS_TOPIC =>{
+          jms_destination_obj = Some(Destination::Topic(destination_name));
+        },
+        _ =>{
+          //ignore unknown type
+          jms_destination_obj = None;
+        }
+      }
+      //add replyTo to message
+      match &mut msg {
+        Message::TextMessage(msg) => msg.destination=jms_destination_obj,
+        Message::BytesMessage(msg) => msg.destination=jms_destination_obj,
+        Message::MapMessage(msg) => msg.destination=jms_destination_obj,
+      }
     }
     // look for replyTo header
     let mut reply_destination: usize = 0;

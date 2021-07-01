@@ -1,3 +1,7 @@
+# 0.3.7 2021-07-01
+
+* refine error returns for admin functions
+
 # 0.3.6 2021-06-14
 
 * fixed: destination header returned wrong value

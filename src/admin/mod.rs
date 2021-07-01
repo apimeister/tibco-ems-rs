@@ -77,7 +77,7 @@ pub struct QueueInfo{
 /// lists all queues present on the EMS
 ///
 /// the underlying connection must be an admin connection created through the tibco_ems::admin::connect() function.
-pub fn list_all_queues(session: &Session) -> Vec<QueueInfo> {
+pub fn list_all_queues(session: &Session) -> Result<Vec<QueueInfo>,Error> {
   let mut queues = Vec::new();
   const TIMEOUT: i64 = 60000;
   let mut msg: MapMessage = Default::default();
@@ -195,15 +195,16 @@ pub fn list_all_queues(session: &Session) -> Vec<QueueInfo> {
     },
     Err(err) =>{
       error!("something went wronge retrieving queue information: {}",err);
+      return Err(err);
     }
   }
-  queues
+  Ok(queues)
 }
 
 /// creates a queue on the EMS
 ///
 /// the underlying connection must be an admin connection created through the tibco_ems::admin::connect() function.
-pub fn create_queue(session: &Session, queue: &QueueInfo){
+pub fn create_queue(session: &Session, queue: &QueueInfo) -> Result<(),Error>{
   //create queue map-message
   let mut msg: MapMessage = Default::default();
   msg.body.insert("dn".to_string(), TypedValue::String(queue.name.clone()));
@@ -242,14 +243,16 @@ pub fn create_queue(session: &Session, queue: &QueueInfo){
     Ok(_) => {},
     Err(err) => {
       error!("error while creating queue {}: {}",queue.name,err);
+      return Err(err);
     }
   }
+  Ok(())
 }
 
 /// deletes a queue from the EMS
 ///
 /// the underlying connection must be an admin connection created through the tibco_ems::admin::connect() function.
-pub fn delete_queue(session: &Session, queue: &str){
+pub fn delete_queue(session: &Session, queue: &str) -> Result<(),Error>{
   trace!("deleting queue {}", queue);
   //create queue map-message
   let mut msg: MapMessage = Default::default();
@@ -270,8 +273,10 @@ pub fn delete_queue(session: &Session, queue: &str){
     Ok(_) => {},
     Err(err) => {
       error!("error while deleting queue {}: {}",queue,err);
+      return Err(err);
     }
   }
+  Ok(())
 }
 
 //
@@ -311,7 +316,7 @@ pub struct TopicInfo{
 /// lists all topics present on the EMS
 ///
 /// the underlying connection must be an admin connection created through the tibco_ems::admin::connect() function.
-pub fn list_all_topics(session: &Session) -> Vec<TopicInfo> {
+pub fn list_all_topics(session: &Session) -> Result<Vec<TopicInfo>,Error> {
   let mut topics = Vec::new();
   const TIMEOUT: i64 = 60000;
   let mut msg: MapMessage = Default::default();
@@ -393,15 +398,16 @@ pub fn list_all_topics(session: &Session) -> Vec<TopicInfo> {
     },
     Err(err) =>{
       error!("something went wrong retrieving topic information: {}",err);
+      return Err(err);
     }
   }
-  topics
+  Ok(topics)
 }
 
 /// creates a topic on the EMS
 ///
 /// the underlying connection must be an admin connection created through the tibco_ems::admin::connect() function.
-pub fn create_topic(session: &Session, topic: &TopicInfo){
+pub fn create_topic(session: &Session, topic: &TopicInfo) -> Result<(),Error> {
   let mut msg: MapMessage = Default::default();
   msg.body.insert("dn".to_string(), TypedValue::String(topic.name.clone()));
   msg.body.insert("dt".to_string(), TypedValue::Integer(DESTINATION_TYPE_TOPIC));
@@ -439,14 +445,16 @@ pub fn create_topic(session: &Session, topic: &TopicInfo){
     Ok(_) => {},
     Err(err) => {
       error!("error while creating topic {}: {}",topic.name,err);
+      return Err(err);
     }
   }
+  Ok(())
 }
 
 /// deletes a topic from the EMS
 ///
 /// the underlying connection must be an admin connection created through the tibco_ems::admin::connect() function.
-pub fn delete_topic(session: &Session, topic: &str) {
+pub fn delete_topic(session: &Session, topic: &str) -> Result<(),Error> {
   trace!("deleting topic {}", topic);
   //create topic map-message
   let mut msg: MapMessage = Default::default();
@@ -467,8 +475,10 @@ pub fn delete_topic(session: &Session, topic: &str) {
     Ok(_) => {},
     Err(err) => {
       error!("error while deleting topic {}: {}",topic,err);
+      return Err(err);
     }
   }
+  Ok(())
 }
 
 //
@@ -476,7 +486,7 @@ pub fn delete_topic(session: &Session, topic: &str) {
 // 
 
 /// create a bridge
-pub fn create_bridge(session: &Session, bridge: &BridgeInfo) {
+pub fn create_bridge(session: &Session, bridge: &BridgeInfo) -> Result<(),Error> {
   //create bridge map-message
   let mut msg: MapMessage = Default::default();
   match bridge.source.clone() {
@@ -521,12 +531,14 @@ pub fn create_bridge(session: &Session, bridge: &BridgeInfo) {
     Ok(_) => {},
     Err(err) => {
       error!("error while creating bridge {:?}->{:?}: {}",bridge.source,bridge.target,err);
+      return Err(err);
     },
   }
+  Ok(())
 }
 
 /// delete a bridge
-pub fn delete_bridge(session: &Session, bridge: &BridgeInfo) {
+pub fn delete_bridge(session: &Session, bridge: &BridgeInfo) -> Result<(),Error> {
   //create bridge map-message
   let mut msg: MapMessage = Default::default();
   match bridge.source.clone() {
@@ -565,8 +577,10 @@ pub fn delete_bridge(session: &Session, bridge: &BridgeInfo) {
     Ok(_) => {},
     Err(err) => {
       error!("error while deleting bridge {:?}->{:?}: {}",bridge.source,bridge.target,err);
+      return Err(err);
     }
-  } 
+  }
+  Ok(())
 }
 
 //
@@ -576,7 +590,7 @@ pub fn delete_bridge(session: &Session, bridge: &BridgeInfo) {
 /// get server state
 ///
 /// the underlying connection must be an admin connection created through the tibco_ems::admin::connect() function.
-pub fn get_server_state(session: &Session) -> ServerState {
+pub fn get_server_state(session: &Session) -> Result<ServerState,Error> {
   const TIMEOUT: i64 = 60000;
   let mut msg: MapMessage = Default::default();
   
@@ -599,9 +613,9 @@ pub fn get_server_state(session: &Session) -> ServerState {
               //got response message
               let state_str = extract!( TypedValue::String(_), map_message.body.get("state").unwrap()).expect("extract server status");
               if state_str == "3"{
-                return ServerState::Standby;
+                return Ok(ServerState::Standby);
               }else{
-                return ServerState::Active;
+                return Ok(ServerState::Active);
               }
             },
             _ =>{
@@ -614,9 +628,10 @@ pub fn get_server_state(session: &Session) -> ServerState {
     },
     Err(err) =>{
       error!("something went wronge retrieving queue information: {}",err);
+      return Err(err);
     }
   }
-  return ServerState::Active;
+  return Ok(ServerState::Active);
 }
 
 /// holds static bridge information

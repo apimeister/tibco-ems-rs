@@ -1,6 +1,6 @@
 [package]
 name = "tibco_ems"
-version = "0.3.6"
+version = "0.3.7"
 authors = ["Jens Walter <jens@apimeister.com>"]
 edition = "2018"
 license = "Apache-2.0"
@@ -10,19 +10,19 @@ documentation = "https://docs.rs/tibco_ems"
 description = "A high level API for the Tibco EMS."
 
 [dependencies]
-log = "0.4"
-tibco_ems-sys = "1"
-serde = { version = "1", features = ["derive"] }
-futures = { version = "0.3", optional = true }
-enum_extract = "0.1"
+log = "0.4.14"
+tibco_ems-sys = "1.0.0"
+serde = { version = "1.0.126", features = ["derive"] }
+futures = { version = "0.3.15", optional = true }
+enum_extract = "0.1.1"
 
 [features]
 streaming = ["futures"]
 
 [dev-dependencies]
-env_logger = "0.8"
-tokio = { version = "1", features = ["full"] }
-futures = { version = "0.3" }
+env_logger = "0.8.4"
+tokio = { version = "1.6.1", features = ["full"] }
+futures = "0.3.15"
 
 [[example]]
 name = "stream_text_message"

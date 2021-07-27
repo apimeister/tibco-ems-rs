@@ -1,3 +1,7 @@
+# 0.3.8 2021-07-27
+
+* make `Message` serializable/deserializable
+
 # 0.3.7 2021-07-01
 
 * refine error returns for admin functions

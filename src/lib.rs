@@ -133,7 +133,7 @@ impl Default for MapMessage{
 
 /// Message enum wich represents the different message types
 #[allow(dead_code)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Message {
   /// represents a Text Message
   TextMessage(TextMessage),

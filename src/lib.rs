@@ -1088,9 +1088,14 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
                   }
                 },
                 tibems_status::TIBEMS_CONVERSION_FAILED => {
+                  //it must be a map msg inside
                   let mut msg2: usize = 0;
                   let status = tibco_ems_sys::tibemsMapMsg_GetMapMsg(msg_pointer, buf_ref, &mut msg2);
                   match status {
+                    tibems_status::TIBEMS_CONVERSION_FAILED => {
+                      //it must be something binary, ingore it for now
+                      trace!("tibemsMapMsg_GetMapMsg: ignoring unkown content");
+                    },
                     tibems_status::TIBEMS_OK => trace!("tibemsMapMsg_GetMapMsg: {:?}",status),
                     _ => error!("tibemsMapMsg_GetMapMsg: {:?}",status),
                   }

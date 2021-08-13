@@ -1,3 +1,7 @@
+# 0.3.9 2021-08-13
+
+* ignore binary content in map messages, so no error pops up
+
 # 0.3.8 2021-07-27
 
 * make `Message` serializable/deserializable

@@ -258,7 +258,7 @@ impl<'stream> Connection {
         },
       }
       let url = CStr::from_ptr(buf_ref).to_str().unwrap();
-      return Ok(url.to_string());
+      Ok(url.to_string())
     }
   }
   // open a consumer as stream of messages
@@ -316,7 +316,7 @@ impl Consumer {
         },
       }
       let msg = build_message_from_pointer(msg_pointer);
-      return Ok(Some(msg));
+      Ok(Some(msg))
     }
   }
 }
@@ -399,12 +399,12 @@ impl Session {
           }
         },
         Destination::Queue(_) => {
-          return Err(Error::new(ErrorKind::Other, format!("destination is not of type topic")));
+          return Err(Error::new(ErrorKind::Other, "destination is not of type topic"));
         }
       }
       //open consumer
       let mut consumer_pointer:usize = 0;
-      let c_subscription_name = CString::new(subscription_name.clone()).unwrap();
+      let c_subscription_name = CString::new((*subscription_name).to_string()).unwrap();
       let c_selector:CString;
       match selector {
         Some(val) => c_selector=CString::new(val).unwrap(),
@@ -444,12 +444,12 @@ impl Session {
           }
         },
         Destination::Queue(_) => {
-          return Err(Error::new(ErrorKind::Other, format!("destination is not of type topic")));
+          return Err(Error::new(ErrorKind::Other, "destination is not of type topic"));
         }
       }
       //open consumer
       let mut consumer_pointer:usize = 0;
-      let c_durable_name = CString::new(durable_name.clone()).unwrap();
+      let c_durable_name = CString::new((*durable_name).to_string()).unwrap();
       let c_selector:CString;
       match selector {
         Some(val) => c_selector=CString::new(val).unwrap(),
@@ -679,7 +679,7 @@ impl Session {
           }
         }
       }
-      return Ok(Some(result));
+      Ok(Some(result))
     }
   }
 }
@@ -745,27 +745,18 @@ impl Message{
     };
     match self {
       Message::TextMessage(msg) => {
-        match msg.pointer {
-          Some(pointer) => {
-            destroy_msg(pointer);
-          },
-          None => {},
+        if let Some(pointer) = msg.pointer {
+          destroy_msg(pointer);
         }
       },
       Message::BytesMessage(msg) => {
-        match msg.pointer {
-          Some(pointer) => {
-            destroy_msg(pointer);
-          },
-          None => {},
+        if let Some(pointer) = msg.pointer {
+          destroy_msg(pointer);
         }
       },
       Message::MapMessage(msg) => {
-        match msg.pointer {
-          Some(pointer) => {
-            destroy_msg(pointer);
-          },
-          None => {},
+        if let Some(pointer) = msg.pointer {
+          destroy_msg(pointer);
         }
       },
     }
@@ -781,27 +772,18 @@ impl Message{
     };
     match self {
       Message::TextMessage(msg) => {
-        match msg.pointer {
-          Some(pointer) => {
-            ack_msg(pointer);
-          },
-          None => {},
+        if let Some(pointer) = msg.pointer {
+          ack_msg(pointer);
         }
       },
       Message::BytesMessage(msg) => {
-        match msg.pointer {
-          Some(pointer) => {
-            ack_msg(pointer);
-          },
-          None => {},
+        if let Some(pointer) = msg.pointer {
+          ack_msg(pointer);
         }
       },
       Message::MapMessage(msg) => {
-        match msg.pointer {
-          Some(pointer) => {
-            ack_msg(pointer);
-          },
-          None => {},
+        if let Some(pointer) = msg.pointer {
+          ack_msg(pointer);
         }
       },
     }
@@ -817,27 +799,18 @@ impl Message{
     };
     match self {
       Message::TextMessage(msg) => {
-        match msg.pointer {
-          Some(pointer) => {
-            recover(pointer);
-          },
-          None => {},
+        if let Some(pointer) = msg.pointer {
+          recover(pointer);
         }
       },
       Message::BytesMessage(msg) => {
-        match msg.pointer {
-          Some(pointer) => {
-            recover(pointer);
-          },
-          None => {},
+        if let Some(pointer) = msg.pointer {
+          recover(pointer);
         }
       },
       Message::MapMessage(msg) => {
-        match msg.pointer {
-          Some(pointer) => {
-            recover(pointer);
-          },
-          None => {},
+        if let Some(pointer) = msg.pointer {
+          recover(pointer);
         }
       },
     }
@@ -961,52 +934,49 @@ fn build_message_pointer_from_message(message: &Message) -> usize {
       Message::BytesMessage(msg) => msg.header.clone(),
       Message::MapMessage(msg) => msg.header.clone(),
     };
-    match header {
-      Some(headers)=>{
-        for (key, val) in &headers {
-          let c_name = CString::new(key.to_string()).unwrap();
-          match val {
-            TypedValue::String(value) => {
-              let c_val = CString::new(value.as_bytes()).unwrap();
-              let status = tibco_ems_sys::tibemsMsg_SetStringProperty(msg_pointer, c_name.as_ptr(), c_val.as_ptr());
-              match status {
-                tibems_status::TIBEMS_OK => trace!("tibemsMsg_SetStringProperty: {:?}",status),
-                _ => error!("tibemsMsg_SetStringProperty: {:?}",status),
-              }    
-            },
-            TypedValue::Boolean(value) => {
-              let status;
-              if *value {
-                status = tibco_ems_sys::tibemsMsg_SetBooleanProperty(msg_pointer, c_name.as_ptr(), tibems_bool::TIBEMS_TRUE);
-              } else {
-                status = tibco_ems_sys::tibemsMsg_SetBooleanProperty(msg_pointer, c_name.as_ptr(), tibems_bool::TIBEMS_FALSE);
-              }
-              match status {
-                tibems_status::TIBEMS_OK => trace!("tibemsMsg_SetBooleanProperty: {:?}",status),
-                _ => error!("tibemsMsg_SetBooleanProperty: {:?}",status),
-              }
-            },
-            TypedValue::Integer(value) => {
-              let status = tibco_ems_sys::tibemsMsg_SetIntProperty(msg_pointer, c_name.as_ptr(), *value);
-              match status {
-                tibems_status::TIBEMS_OK => trace!("tibemsMsg_SetIntProperty: {:?}",status),
-                _ => error!("tibemsMsg_SetIntProperty: {:?}",status),
-              }    
-            },
-            TypedValue::Long(value) => {
-              let status = tibco_ems_sys::tibemsMsg_SetLongProperty(msg_pointer, c_name.as_ptr(), *value);
-              match status {
-                tibems_status::TIBEMS_OK => trace!("tibemsMsg_SetLongProperty: {:?}",status),
-                _ => error!("tibemsMsg_SetLongProperty: {:?}",status),
-              }    
-            },
-            _ => {
-              panic!("missing property type implementation for {:?}",val);
+    if let Some(headers) = header {
+      for (key, val) in &headers {
+        let c_name = CString::new(key.to_string()).unwrap();
+        match val {
+          TypedValue::String(value) => {
+            let c_val = CString::new(value.as_bytes()).unwrap();
+            let status = tibco_ems_sys::tibemsMsg_SetStringProperty(msg_pointer, c_name.as_ptr(), c_val.as_ptr());
+            match status {
+              tibems_status::TIBEMS_OK => trace!("tibemsMsg_SetStringProperty: {:?}",status),
+              _ => error!("tibemsMsg_SetStringProperty: {:?}",status),
+            }    
+          },
+          TypedValue::Boolean(value) => {
+            let status;
+            if *value {
+              status = tibco_ems_sys::tibemsMsg_SetBooleanProperty(msg_pointer, c_name.as_ptr(), tibems_bool::TIBEMS_TRUE);
+            } else {
+              status = tibco_ems_sys::tibemsMsg_SetBooleanProperty(msg_pointer, c_name.as_ptr(), tibems_bool::TIBEMS_FALSE);
             }
+            match status {
+              tibems_status::TIBEMS_OK => trace!("tibemsMsg_SetBooleanProperty: {:?}",status),
+              _ => error!("tibemsMsg_SetBooleanProperty: {:?}",status),
+            }
+          },
+          TypedValue::Integer(value) => {
+            let status = tibco_ems_sys::tibemsMsg_SetIntProperty(msg_pointer, c_name.as_ptr(), *value);
+            match status {
+              tibems_status::TIBEMS_OK => trace!("tibemsMsg_SetIntProperty: {:?}",status),
+              _ => error!("tibemsMsg_SetIntProperty: {:?}",status),
+            }    
+          },
+          TypedValue::Long(value) => {
+            let status = tibco_ems_sys::tibemsMsg_SetLongProperty(msg_pointer, c_name.as_ptr(), *value);
+            match status {
+              tibems_status::TIBEMS_OK => trace!("tibemsMsg_SetLongProperty: {:?}",status),
+              _ => error!("tibemsMsg_SetLongProperty: {:?}",status),
+            }    
+          },
+          _ => {
+            panic!("missing property type implementation for {:?}",val);
           }
         }
-      },
-      None => {},
+      }
     }
   }
   msg_pointer
@@ -1056,9 +1026,9 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
           _ => error!("tibemsMsg_GetMessageID: {:?}",status),
         }
         //admin messages do not have a message id
-        if buf_vec.len() > 0 {
+        if !buf_vec.is_empty() {
           let message_id = CStr::from_ptr(buf_ref).to_str().unwrap();
-          &header.insert("MessageID".to_string(),TypedValue::String(message_id.to_string()));  
+          header.insert("MessageID".to_string(),TypedValue::String(message_id.to_string()));  
         }
         let mut names_pointer: usize = 0;
         trace!("tibemsMapMsg_GetMapNames");

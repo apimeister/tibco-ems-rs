@@ -1,6 +1,7 @@
-# 0.3.10 2021-08-*
+# 0.3.10 2021-09-06
 
 * implement clippy recommendations
+* support prefetch property
 
 # 0.3.9 2021-08-13
 

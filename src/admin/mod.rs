@@ -199,6 +199,9 @@ pub fn create_queue(session: &Session, queue: &QueueInfo) -> Result<(),Error>{
   if let Some(val) = queue.global {
     msg.body.insert("global".to_string(), TypedValue::Boolean(val));
   }
+  if let Some(val) = queue.prefetch {
+    msg.body.insert("pf".to_string(), TypedValue::Integer(val));
+  }
 
   //header
   let mut header: HashMap<String,TypedValue> = HashMap::new();
@@ -385,6 +388,9 @@ pub fn create_topic(session: &Session, topic: &TopicInfo) -> Result<(),Error> {
   }
   if let Some(val) = topic.global {
     msg.body.insert("global".to_string(), TypedValue::Boolean(val));
+  }
+  if let Some(val) = topic.prefetch {
+    msg.body.insert("pf".to_string(), TypedValue::Integer(val));
   }
 
   //header

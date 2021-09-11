@@ -1066,17 +1066,19 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
                       //it must be something binary, ingore it for now
                       trace!("tibemsMapMsg_GetMapMsg: ignoring unkown content");
                     },
-                    tibems_status::TIBEMS_OK => trace!("tibemsMapMsg_GetMapMsg: {:?}",status),
-                    _ => error!("tibemsMapMsg_GetMapMsg: {:?}",status),
-                  }
-                  let mut raw_message = build_message_from_pointer(msg2);
-                  match &mut raw_message {
-                    Message::TextMessage(_msg) => {},
-                    Message::BytesMessage(_msg) => {},
-                    Message::MapMessage(msg) => {
-                      msg.pointer=None;
-                      body_entries.insert(header_name.to_string(), TypedValue::Map(msg.clone()));
+                    tibems_status::TIBEMS_OK => {
+                      trace!("tibemsMapMsg_GetMapMsg: {:?}",status);
+                      let mut raw_message = build_message_from_pointer(msg2);
+                      match &mut raw_message {
+                        Message::TextMessage(_msg) => {},
+                        Message::BytesMessage(_msg) => {},
+                        Message::MapMessage(msg) => {
+                          msg.pointer=None;
+                          body_entries.insert(header_name.to_string(), TypedValue::Map(msg.clone()));
+                        },
+                      }    
                     },
+                    _ => error!("tibemsMapMsg_GetMapMsg: {:?}",status),
                   }
                 },
                 _ => error!("tibemsMapMsg_GetString: {:?}",status),

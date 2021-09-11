@@ -1,3 +1,7 @@
+# 0.3.11 2021-09-11
+
+* fix map message in map message unpacking
+
 # 0.3.10 2021-09-06
 
 * implement clippy recommendations

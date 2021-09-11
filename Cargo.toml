@@ -1,6 +1,6 @@
 [package]
 name = "tibco_ems"
-version = "0.3.10"
+version = "0.3.11"
 authors = ["Jens Walter <jens@apimeister.com>"]
 edition = "2018"
 license = "Apache-2.0"

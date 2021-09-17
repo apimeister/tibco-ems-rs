@@ -1,3 +1,7 @@
+# 0.3.12 2021-09-17
+
+* fix binary message content extraction
+
 # 0.3.11 2021-09-11
 
 * fix map message in map message unpacking

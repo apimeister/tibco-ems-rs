@@ -1117,8 +1117,18 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
         }
         let message_id = CStr::from_ptr(buf_ref).to_str().unwrap();
         header.insert("MessageID".to_string(),TypedValue::String(message_id.to_string()));
+        //extract body
+        let buf_vec:Vec<i8> = vec![0; 0];
+        let mut buf_ref: *const std::os::raw::c_char = buf_vec.as_ptr();
+        let mut result_size: u32 = 0;
+        let status = tibco_ems_sys::tibemsBytesMsg_GetBytes(msg_pointer, &mut buf_ref, &mut result_size);
+        match status {
+          tibems_status::TIBEMS_OK => trace!("tibemsBytesMsg_GetBytes: {:?}",status),
+          _ => error!("tibemsBytesMsg_GetBytes: {:?}",status),
+        }
+        let x= CStr::from_ptr(buf_ref).to_bytes().clone();
         msg = Message::BytesMessage(BytesMessage{
-          body: vec![],
+          body: x.to_vec(),
           header: None,
           pointer: Some(msg_pointer),
           destination: None,

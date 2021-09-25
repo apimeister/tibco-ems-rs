@@ -1,3 +1,9 @@
+# 0.4.0 2021-09-25
+
+* support object message
+* apply cargo format
+* initial mock server support
+
 # 0.3.12 2021-09-17
 
 * fix binary message content extraction

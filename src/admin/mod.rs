@@ -652,7 +652,7 @@ pub fn delete_bridge(session: &Session, bridge: &BridgeInfo) -> Result<(), Error
   header.insert("JMS_TIBCO_MSG_EXT".to_string(), TypedValue::Boolean(true));
   header.insert(
     "code".to_string(),
-    TypedValue::Integer(AdminCommands::DeleteBrdige as i32),
+    TypedValue::Integer(AdminCommands::DeleteBridge as i32),
   );
   header.insert("save".to_string(), TypedValue::Boolean(true));
   header.insert("arseq".to_string(), TypedValue::Integer(1));
@@ -770,7 +770,7 @@ pub enum AdminCommands {
   /// create a bridge
   CreateBridge = 220,
   /// delete a bridge
-  DeleteBrdige = 221,
+  DeleteBridge = 221,
 }
 
 /// server states

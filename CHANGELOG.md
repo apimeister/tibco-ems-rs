@@ -1,3 +1,7 @@
+# 0.4.1 2021-10-05
+
+* fix typo in admin commands enum
+
 # 0.4.0 2021-09-25
 
 * support object message

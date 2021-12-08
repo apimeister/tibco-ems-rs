@@ -1555,7 +1555,8 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
           tibems_status::TIBEMS_OK => trace!("tibemsBytesMsg_GetBytes: {:?}", status),
           _ => error!("tibemsBytesMsg_GetBytes: {:?}", status),
         }
-        let x = CStr::from_ptr(buf_ref).to_bytes().to_vec();
+        let mut x = CStr::from_ptr(buf_ref).to_bytes().to_vec();
+        x.truncate(result_size as usize);
         msg = Message::BytesMessage(BytesMessage {
           body: x,
           header: None,

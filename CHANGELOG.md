@@ -1,3 +1,7 @@
+# 0.4.2 2021-12-08
+
+* truncate message body buffer for binary messages
+
 # 0.4.1 2021-10-05
 
 * fix typo in admin commands enum

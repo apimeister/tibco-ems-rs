@@ -78,7 +78,7 @@ impl Default for TextMessage {
 }
 
 /// represents a Binary Message
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct BytesMessage {
   /// message body
   pub body: Vec<u8>,
@@ -92,20 +92,8 @@ pub struct BytesMessage {
   pub pointer: Option<usize>,
 }
 
-impl Default for BytesMessage {
-  fn default() -> Self {
-    BytesMessage {
-      body: vec![],
-      header: None,
-      destination: None,
-      reply_to: None,
-      pointer: None,
-    }
-  }
-}
-
 /// represents a Object Message
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ObjectMessage {
   /// message body
   pub body: Vec<u8>,
@@ -119,20 +107,8 @@ pub struct ObjectMessage {
   pub pointer: Option<usize>,
 }
 
-impl Default for ObjectMessage {
-  fn default() -> Self {
-    ObjectMessage {
-      body: vec![],
-      header: None,
-      destination: None,
-      reply_to: None,
-      pointer: None,
-    }
-  }
-}
-
 /// represents a Map Message
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct MapMessage {
   /// message body map properties
   pub body: HashMap<String, TypedValue>,
@@ -144,18 +120,6 @@ pub struct MapMessage {
   pub reply_to: Option<Destination>,
   /// point to the ems native object
   pub pointer: Option<usize>,
-}
-
-impl Default for MapMessage {
-  fn default() -> Self {
-    MapMessage {
-      body: HashMap::new(),
-      header: None,
-      destination: None,
-      reply_to: None,
-      pointer: None,
-    }
-  }
 }
 
 /// Message enum wich represents the different message types
@@ -524,11 +488,10 @@ impl Session {
       }
       //open consumer
       let mut consumer_pointer: usize = 0;
-      let c_selector: CString;
-      match selector {
-        Some(val) => c_selector = CString::new(val).unwrap(),
-        _ => c_selector = CString::new("".to_string()).unwrap(),
-      }
+      let c_selector: CString = match selector {
+        Some(val) => CString::new(val).unwrap(),
+        _ => CString::new("".to_string()).unwrap(),
+      };
       let status = tibco_ems_sys::tibemsSession_CreateConsumer(
         self.pointer,
         &mut consumer_pointer,
@@ -611,11 +574,10 @@ impl Session {
       //open consumer
       let mut consumer_pointer: usize = 0;
       let c_subscription_name = CString::new((*subscription_name).to_string()).unwrap();
-      let c_selector: CString;
-      match selector {
-        Some(val) => c_selector = CString::new(val).unwrap(),
-        _ => c_selector = CString::new("".to_string()).unwrap(),
-      }
+      let c_selector: CString = match selector {
+        Some(val) => CString::new(val).unwrap(),
+        _ => CString::new("".to_string()).unwrap(),
+      };
       let status = tibco_ems_sys::tibemsSession_CreateSharedConsumer(
         self.pointer,
         &mut consumer_pointer,
@@ -686,11 +648,10 @@ impl Session {
       //open consumer
       let mut consumer_pointer: usize = 0;
       let c_durable_name = CString::new((*durable_name).to_string()).unwrap();
-      let c_selector: CString;
-      match selector {
-        Some(val) => c_selector = CString::new(val).unwrap(),
-        _ => c_selector = CString::new("".to_string()).unwrap(),
-      }
+      let c_selector: CString = match selector {
+        Some(val) => CString::new(val).unwrap(),
+        _ => CString::new("".to_string()).unwrap(),
+      };
       let status = tibco_ems_sys::tibemsSession_CreateSharedDurableConsumer(
         self.pointer,
         &mut consumer_pointer,
@@ -1229,20 +1190,19 @@ fn build_message_pointer_from_message(message: &Message) -> usize {
           let c_name = CString::new(key).unwrap();
           match val {
             TypedValue::Boolean(value) => {
-              let status;
-              if value {
-                status = tibco_ems_sys::tibemsMapMsg_SetBoolean(
+              let status = if value {
+                tibco_ems_sys::tibemsMapMsg_SetBoolean(
                   msg_pointer,
                   c_name.as_ptr(),
                   tibems_bool::TIBEMS_TRUE,
-                );
+                )
               } else {
-                status = tibco_ems_sys::tibemsMapMsg_SetBoolean(
+                tibco_ems_sys::tibemsMapMsg_SetBoolean(
                   msg_pointer,
                   c_name.as_ptr(),
                   tibems_bool::TIBEMS_FALSE,
-                );
-              }
+                )
+              };
               match status {
                 tibems_status::TIBEMS_OK => {
                   trace!("tibemsMapMsg_SetBoolean: {:?}", status)
@@ -1344,20 +1304,19 @@ fn build_message_pointer_from_message(message: &Message) -> usize {
             }
           }
           TypedValue::Boolean(value) => {
-            let status;
-            if *value {
-              status = tibco_ems_sys::tibemsMsg_SetBooleanProperty(
+            let status = if *value {
+              tibco_ems_sys::tibemsMsg_SetBooleanProperty(
                 msg_pointer,
                 c_name.as_ptr(),
                 tibems_bool::TIBEMS_TRUE,
-              );
+              )
             } else {
-              status = tibco_ems_sys::tibemsMsg_SetBooleanProperty(
+              tibco_ems_sys::tibemsMsg_SetBooleanProperty(
                 msg_pointer,
                 c_name.as_ptr(),
                 tibems_bool::TIBEMS_FALSE,
-              );
-            }
+              )
+            };
             match status {
               tibems_status::TIBEMS_OK => {
                 trace!("tibemsMsg_SetBooleanProperty: {:?}", status)
@@ -1602,6 +1561,19 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
         panic!("BodyType {:?} not implemented", msg_type);
       }
     }
+    //add correlation id to header
+    let buf_vec: Vec<i8> = vec![0; 0];
+    let buf_ref: *const std::os::raw::c_char = buf_vec.as_ptr();
+    let status = tibco_ems_sys::tibemsMsg_GetCorrelationID(msg_pointer, &buf_ref);
+    match status {
+      tibems_status::TIBEMS_OK => trace!("tibemsMsg_GetCorrelationID: {:?}", status),
+      _ => error!("tibemsMsg_GetCorrelationID: {:?}", status),
+    }
+    let correlation_id = CStr::from_ptr(buf_ref).to_str().unwrap();
+    header.insert(
+      "CorrelationID".to_string(),
+      TypedValue::String(correlation_id.to_string()),
+    );
     // fetch header
     let mut header_enumeration: usize = 0;
     let status = tibco_ems_sys::tibemsMsg_GetPropertyNames(msg_pointer, &mut header_enumeration);
@@ -1677,19 +1649,18 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
         _ => error!("tibemsDestination_GetName: {:?}", status),
       }
       let destination_name: String = CStr::from_ptr(buf_ref).to_str().unwrap().to_string();
-      let jms_destination_obj: Option<Destination>;
-      match destination_type {
+      let jms_destination_obj: Option<Destination> = match destination_type {
         tibemsDestinationType::TIBEMS_QUEUE => {
-          jms_destination_obj = Some(Destination::Queue(destination_name));
+          Some(Destination::Queue(destination_name))
         }
         tibemsDestinationType::TIBEMS_TOPIC => {
-          jms_destination_obj = Some(Destination::Topic(destination_name));
+          Some(Destination::Topic(destination_name))
         }
         _ => {
           //ignore unknown type
-          jms_destination_obj = None;
+          None
         }
-      }
+      };
       //add replyTo to message
       match &mut msg {
         Message::TextMessage(msg) => msg.destination = jms_destination_obj,
@@ -1723,19 +1694,18 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
         _ => error!("tibemsDestination_GetName: {:?}", status),
       }
       let destination_name: String = CStr::from_ptr(buf_ref).to_str().unwrap().to_string();
-      let reply_destination_obj: Option<Destination>;
-      match destination_type {
+      let reply_destination_obj: Option<Destination> = match destination_type {
         tibemsDestinationType::TIBEMS_QUEUE => {
-          reply_destination_obj = Some(Destination::Queue(destination_name));
+          Some(Destination::Queue(destination_name))
         }
         tibemsDestinationType::TIBEMS_TOPIC => {
-          reply_destination_obj = Some(Destination::Topic(destination_name));
+          Some(Destination::Topic(destination_name))
         }
         _ => {
           //ignore unknown type
-          reply_destination_obj = None;
+          None
         }
-      }
+      };
       //add replyTo to message
       match &mut msg {
         Message::TextMessage(msg) => msg.reply_to = reply_destination_obj,

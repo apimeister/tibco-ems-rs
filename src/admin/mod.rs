@@ -126,13 +126,12 @@ pub fn list_all_queues(session: &Session) -> Result<Vec<QueueInfo>, Error> {
                 .expect("extract max messages");
               let overflow = extract!(TypedValue::String(_), q_info.body.get("op").unwrap())
                 .expect("extract overflow");
-              let overflow_policy: OverflowPolicy;
-              match overflow.as_str() {
-                "0" => overflow_policy = OverflowPolicy::Default,
-                "1" => overflow_policy = OverflowPolicy::DiscardOld,
-                "2" => overflow_policy = OverflowPolicy::RejectIncoming,
-                _ => overflow_policy = OverflowPolicy::Default,
-              }
+              let overflow_policy: OverflowPolicy = match overflow.as_str() {
+                "0" => OverflowPolicy::Default,
+                "1" => OverflowPolicy::DiscardOld,
+                "2" => OverflowPolicy::RejectIncoming,
+                _ => OverflowPolicy::Default,
+              };
               let mut bool_failsafe = false;
               if let Some(val) = q_info.body.get("failsafe") {
                 let failsafe = extract!(TypedValue::String(_), val).expect("extract failsafe");
@@ -410,13 +409,12 @@ pub fn list_all_topics(session: &Session) -> Result<Vec<TopicInfo>, Error> {
                   .expect("extract property");
               let overflow = extract!(TypedValue::String(_), t_info.body.get("op").unwrap())
                 .expect("extract property");
-              let overflow_policy: OverflowPolicy;
-              match overflow.as_str() {
-                "0" => overflow_policy = OverflowPolicy::Default,
-                "1" => overflow_policy = OverflowPolicy::DiscardOld,
-                "2" => overflow_policy = OverflowPolicy::RejectIncoming,
-                _ => overflow_policy = OverflowPolicy::Default,
-              }
+              let overflow_policy: OverflowPolicy = match overflow.as_str() {
+                "0" => OverflowPolicy::Default,
+                "1" => OverflowPolicy::DiscardOld,
+                "2" => OverflowPolicy::RejectIncoming,
+                _ => OverflowPolicy::Default,
+              };
 
               let topic_info = TopicInfo {
                 name: key.to_string(),

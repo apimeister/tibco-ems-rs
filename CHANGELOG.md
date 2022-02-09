@@ -1,3 +1,7 @@
+# 0.4.4 2022-02-09
+
+* fix null pointer in correlationid extraction
+
 # 0.4.3 2022-02-08
 
 * extract correlation id from message header

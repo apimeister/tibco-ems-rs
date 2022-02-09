@@ -1566,14 +1566,16 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
     let buf_ref: *const std::os::raw::c_char = buf_vec.as_ptr();
     let status = tibco_ems_sys::tibemsMsg_GetCorrelationID(msg_pointer, &buf_ref);
     match status {
-      tibems_status::TIBEMS_OK => trace!("tibemsMsg_GetCorrelationID: {:?}", status),
-      _ => error!("tibemsMsg_GetCorrelationID: {:?}", status),
+      tibems_status::TIBEMS_OK =>{
+        trace!("tibemsMsg_GetCorrelationID: {:?}", status);
+        let correlation_id = CStr::from_ptr(buf_ref).to_str().unwrap();
+        header.insert(
+          "CorrelationID".to_string(),
+          TypedValue::String(correlation_id.to_string()),
+        );    
+      },
+      _ => trace!("tibemsMsg_GetCorrelationID: {:?}", status),
     }
-    let correlation_id = CStr::from_ptr(buf_ref).to_str().unwrap();
-    header.insert(
-      "CorrelationID".to_string(),
-      TypedValue::String(correlation_id.to_string()),
-    );
     // fetch header
     let mut header_enumeration: usize = 0;
     let status = tibco_ems_sys::tibemsMsg_GetPropertyNames(msg_pointer, &mut header_enumeration);

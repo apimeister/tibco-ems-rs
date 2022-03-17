@@ -1,3 +1,7 @@
+# 0.4.5 2022-03-17
+
+* fix zero byte message parsing
+
 # 0.4.4 2022-02-09
 
 * fix null pointer in correlationid extraction

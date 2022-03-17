@@ -1504,20 +1504,32 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
           "MessageID".to_string(),
           TypedValue::String(message_id.to_string()),
         );
-        //extract body
-        let buf_vec: Vec<i8> = vec![0; 0];
-        let buf_ref: *const std::os::raw::c_char = buf_vec.as_ptr();
-        let mut result_size: u32 = 0;
-        let status =
-          tibco_ems_sys::tibemsBytesMsg_GetBytes(msg_pointer, &buf_ref, &mut result_size);
+        //check body length
+        let mut body_length: i32 = 0;
+        let mut body_value: Vec<u8> = vec![0; 0];
+        let status = tibco_ems_sys::tibemsBytesMsg_GetBodyLength(msg_pointer, &mut body_length);
         match status {
-          tibems_status::TIBEMS_OK => trace!("tibemsBytesMsg_GetBytes: {:?}", status),
-          _ => error!("tibemsBytesMsg_GetBytes: {:?}", status),
+          tibems_status::TIBEMS_OK =>{
+            trace!("tibemsBytesMsg_GetBodyLength: {:?}", status);
+            if body_length > 0 {
+              //extract body
+              let buf_vec: Vec<i8> = vec![0; 0];
+              let buf_ref: *const std::os::raw::c_char = buf_vec.as_ptr();
+              let mut result_size: u32 = 0;
+              let status =
+                tibco_ems_sys::tibemsBytesMsg_GetBytes(msg_pointer, &buf_ref, &mut result_size);
+              match status {
+                tibems_status::TIBEMS_OK => trace!("tibemsBytesMsg_GetBytes: {:?}", status),
+                _ => error!("tibemsBytesMsg_GetBytes: {:?}", status),
+              }
+              body_value = CStr::from_ptr(buf_ref).to_bytes().to_vec();
+              body_value.truncate(result_size as usize);
+            }
+          },
+          _ => error!("tibemsBytesMsg_GetBodyLength: {:?}", status),
         }
-        let mut x = CStr::from_ptr(buf_ref).to_bytes().to_vec();
-        x.truncate(result_size as usize);
         msg = Message::BytesMessage(BytesMessage {
-          body: x,
+          body: body_value,
           header: None,
           pointer: Some(msg_pointer),
           destination: None,

@@ -1,3 +1,8 @@
+# 0.4.6 2022-03-17
+
+* check null pointer in correlationid
+* support `setCorrelationId` theough the "CorrelationID" header
+
 # 0.4.5 2022-03-17
 
 * fix zero byte message parsing

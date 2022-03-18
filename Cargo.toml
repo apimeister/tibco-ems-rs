@@ -1,6 +1,6 @@
 [package]
 name = "tibco_ems"
-version = "0.4.5"
+version = "0.4.6"
 authors = ["Jens Walter <jens@apimeister.com>"]
 edition = "2018"
 license = "Apache-2.0"
@@ -19,6 +19,7 @@ enum_extract = "0.1"
 [features]
 streaming = ["futures"]
 mock = []
+test_with_ems = []
 
 [dev-dependencies]
 env_logger = "0.9"

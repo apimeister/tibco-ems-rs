@@ -1,5 +1,6 @@
 //! Tibco EMS binding.
 
+use enum_extract::extract;
 use log::{error, trace};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -1286,6 +1287,20 @@ fn build_message_pointer_from_message(message: &Message) -> usize {
       Message::ObjectMessage(msg) => msg.header.clone(),
     };
     if let Some(headers) = header {
+      //look for correlation id
+      if let Some(correlation_id) = headers.get("CorrelationID") {
+        let correlation_id_val = extract!(TypedValue::String(_), correlation_id).expect("extract correlation id");
+        let c_correlation_id = CString::new(correlation_id_val.as_str()).unwrap();
+        let status = tibco_ems_sys::tibemsMsg_SetCorrelationID(
+          msg_pointer,
+          c_correlation_id.as_ptr(),
+        );
+        match status {
+          tibems_status::TIBEMS_OK => trace!("tibemsMsg_SetCorrelationId: {:?}", status),
+          _ => error!("tibemsMsg_SetCorrelationId: {:?}", status),
+        }
+      }
+      //do other headers (also do correlation id again as custom header)
       for (key, val) in &headers {
         let c_name = CString::new(key.to_string()).unwrap();
         match val {
@@ -1580,11 +1595,14 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
     match status {
       tibems_status::TIBEMS_OK =>{
         trace!("tibemsMsg_GetCorrelationID: {:?}", status);
-        let correlation_id = CStr::from_ptr(buf_ref).to_str().unwrap();
-        header.insert(
-          "CorrelationID".to_string(),
-          TypedValue::String(correlation_id.to_string()),
-        );    
+        // check for null pointer (when no correlation id was set)
+        if buf_ref != std::ptr::null() {
+          let correlation_id = CStr::from_ptr(buf_ref).to_str().unwrap();
+          header.insert(
+            "CorrelationID".to_string(),
+            TypedValue::String(correlation_id.to_string()),
+          );
+        }
       },
       _ => trace!("tibemsMsg_GetCorrelationID: {:?}", status),
     }

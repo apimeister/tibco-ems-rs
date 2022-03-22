@@ -1157,12 +1157,14 @@ fn build_message_pointer_from_message(message: &Message) -> usize {
         }
         let content = msg.body.clone();
         let body_size = content.len();
-        let body_ptr = content.as_ptr() as *const c_void;
-        let status =
-          tibco_ems_sys::tibemsBytesMsg_SetBytes(msg_pointer, body_ptr, body_size as u32);
-        match status {
-          tibems_status::TIBEMS_OK => trace!("tibemsBytesMsg_SetBytes: {:?}", status),
-          _ => error!("tibemsBytesMsg_SetBytes: {:?}", status),
+        if body_size > 0 {
+          let body_ptr = content.as_ptr() as *const c_void;
+          let status =
+            tibco_ems_sys::tibemsBytesMsg_SetBytes(msg_pointer, body_ptr, body_size as u32);
+          match status {
+            tibems_status::TIBEMS_OK => trace!("tibemsBytesMsg_SetBytes: {:?}", status),
+            _ => error!("tibemsBytesMsg_SetBytes: {:?}", status),
+          }
         }
       }
       Message::ObjectMessage(msg) => {

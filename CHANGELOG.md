@@ -1,3 +1,7 @@
+# 0.4.8 2022-04-26
+
+* fix reading binary messages with null character inside
+
 # 0.4.7 2022-03-22
 
 * do not SetBytes in case of the empty payload

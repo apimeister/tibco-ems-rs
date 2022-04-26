@@ -1530,8 +1530,8 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
             trace!("tibemsBytesMsg_GetBodyLength: {:?}", status);
             if body_length > 0 {
               //extract body
-              let buf_vec: Vec<i8> = vec![0; 0];
-              let buf_ref: *const std::os::raw::c_char = buf_vec.as_ptr();
+              let buf_vec: Vec<u8> = vec![0; 0];
+              let buf_ref: *const std::os::raw::c_uchar = buf_vec.as_ptr();
               let mut result_size: u32 = 0;
               let status =
                 tibco_ems_sys::tibemsBytesMsg_GetBytes(msg_pointer, &buf_ref, &mut result_size);
@@ -1539,8 +1539,8 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
                 tibems_status::TIBEMS_OK => trace!("tibemsBytesMsg_GetBytes: {:?}", status),
                 _ => error!("tibemsBytesMsg_GetBytes: {:?}", status),
               }
-              body_value = CStr::from_ptr(buf_ref).to_bytes().to_vec();
-              body_value.truncate(result_size as usize);
+              let slice = core::slice::from_raw_parts(buf_ref, result_size as usize);
+              body_value = slice.to_vec();
             }
           },
           _ => error!("tibemsBytesMsg_GetBodyLength: {:?}", status),
@@ -1598,7 +1598,7 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
       tibems_status::TIBEMS_OK =>{
         trace!("tibemsMsg_GetCorrelationID: {:?}", status);
         // check for null pointer (when no correlation id was set)
-        if buf_ref != std::ptr::null() {
+        if buf_ref.is_null() {
           let correlation_id = CStr::from_ptr(buf_ref).to_str().unwrap();
           header.insert(
             "CorrelationID".to_string(),

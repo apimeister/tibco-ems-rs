@@ -1,3 +1,7 @@
+# 0.4.9 2022-04-27
+
+* fix broken null check for correlationid
+
 # 0.4.8 2022-04-26
 
 * fix reading binary messages with null character inside

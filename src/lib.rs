@@ -1598,7 +1598,7 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
       tibems_status::TIBEMS_OK =>{
         trace!("tibemsMsg_GetCorrelationID: {:?}", status);
         // check for null pointer (when no correlation id was set)
-        if buf_ref.is_null() {
+        if !buf_ref.is_null() {
           let correlation_id = CStr::from_ptr(buf_ref).to_str().unwrap();
           header.insert(
             "CorrelationID".to_string(),

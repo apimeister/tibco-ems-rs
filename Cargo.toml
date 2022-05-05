@@ -1,8 +1,8 @@
 [package]
 name = "tibco_ems"
-version = "0.4.9"
+version = "0.4.10"
 authors = ["Jens Walter <jens@apimeister.com>"]
-edition = "2018"
+edition = "2021"
 license = "Apache-2.0"
 keywords = ["tibco","ems"]
 repository = "https://github.com/apimeister/tibco-ems-rs/"

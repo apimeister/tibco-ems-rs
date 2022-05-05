@@ -1,3 +1,9 @@
+# 0.4.10 2022-05-05
+
+* fix object message implementation to support unsigned bytes
+* support reading JMSType header
+* update rust edition to 2021
+
 # 0.4.9 2022-04-27
 
 * fix broken null check for correlationid

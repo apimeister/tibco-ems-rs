@@ -1727,12 +1727,15 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
         match status {
             tibems_status::TIBEMS_OK => {
                 trace!("tibemsMsg_GetType: {:?}", status);
-                let header_value = CStr::from_ptr(val_buf_ref).to_str().unwrap();
-                if !header_value.is_empty() {
-                    header.insert(
-                        "JMSType".to_string(),
-                        TypedValue::String(header_value.to_string()),
-                    );
+                // check for null pointer (when no correlation id was set)
+                if !val_buf_ref.is_null() {
+                    let header_value = CStr::from_ptr(val_buf_ref).to_str().unwrap();
+                    if !header_value.is_empty() {
+                        header.insert(
+                            "JMSType".to_string(),
+                            TypedValue::String(header_value.to_string()),
+                        );
+                    }
                 }
             }
             _ => error!("tibemsMsg_GetType: {:?}", status),

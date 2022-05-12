@@ -1,3 +1,7 @@
+# 0.4.11 2022-05-15
+
+* check null pointer for JMSType header
+
 # 0.4.10 2022-05-05
 
 * fix object message implementation to support unsigned bytes

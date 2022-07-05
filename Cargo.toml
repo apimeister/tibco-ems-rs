@@ -1,6 +1,6 @@
 [package]
 name = "tibco_ems"
-version = "0.4.11"
+version = "0.4.12"
 authors = ["Jens Walter <jens@apimeister.com>"]
 edition = "2021"
 license = "Apache-2.0"
@@ -11,14 +11,15 @@ description = "A high level API for the Tibco EMS."
 
 [dependencies]
 log = "0.4"
-tibco_ems-sys = "1"
+tibco_ems-sys = { version = "1", optional = true }
 serde = { version = "1", features = ["derive"] }
 futures = { version = "0.3", optional = true }
 enum_extract = "0.1"
 
 [features]
+default = ["ems-sys"]
 streaming = ["futures"]
-mock = []
+ems-sys = ["dep:tibco_ems-sys"]
 test_with_ems = []
 
 [dev-dependencies]

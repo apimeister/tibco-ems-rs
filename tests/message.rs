@@ -35,4 +35,43 @@ mod messages {
     Ok(())
   }
 
+  #[test]
+  fn text_message_clone() {
+    let msg = tibco_ems::TextMessage{
+      pointer: Some(5),
+      ..Default::default()
+    };
+    let msg2 = msg.clone();
+    assert_eq!(msg2.pointer, None)
+  }
+
+  #[test]
+  fn map_message_clone() {
+    let msg = tibco_ems::MapMessage{
+      pointer: Some(5),
+      ..Default::default()
+    };
+    let msg2 = msg.clone();
+    assert_eq!(msg2.pointer, None)
+  }
+
+  #[test]
+  fn bytes_message_clone() {
+    let msg = tibco_ems::BytesMessage{
+      pointer: Some(5),
+      ..Default::default()
+    };
+    let msg2 = msg.clone();
+    assert_eq!(msg2.pointer, None)
+  }
+
+  #[test]
+  fn object_message_clone() {
+    let msg = tibco_ems::ObjectMessage{
+      pointer: Some(5),
+      ..Default::default()
+    };
+    let msg2 = msg.clone();
+    assert_eq!(msg2.pointer, None)
+  }
 }

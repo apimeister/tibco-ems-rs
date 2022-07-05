@@ -1,9 +1,13 @@
 # 0.4.12 2022-07-06
 
 * some clippy recommendations
-* modify clone for Text/Map/Bytes message
+* modify clone for Text/Map/Bytes/Object messages
     * cloned object no longer contains pointer to c object
     * cloned object can no longer be confirmed/rolled-back
+* refactor mocking
+    * mocking no longer depends on ems library
+    * mocking is now enable by "--no-default-features"
+* more default formatting
 
 # 0.4.11 2022-05-15
 

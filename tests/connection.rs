@@ -2,7 +2,7 @@
 mod tests {
 
   #[test]
-  #[cfg(not(feature = "mock"))]
+  #[cfg(feature = "ems-sys")]
   fn test_connection_failure() -> Result<(), String> {
     let result = tibco_ems::connect("tcp://example.org:7222", "admin", "admin");
     match result {
@@ -16,7 +16,7 @@ mod tests {
   }
 
   #[test]
-  #[cfg(feature = "mock")]
+  #[cfg(not(feature = "ems-sys"))]
   fn test_mock_connection() -> Result<(), String> {
     let result = tibco_ems::connect("tcp://example.org:7222", "admin", "admin");
     match result {

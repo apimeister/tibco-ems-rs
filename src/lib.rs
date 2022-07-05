@@ -11,10 +11,8 @@ use std::io::Error;
 use std::io::ErrorKind;
 use std::ops::Deref;
 use std::sync::Arc;
-use tibco_ems_sys::tibemsDestinationType;
-use tibco_ems_sys::tibemsMsgType;
-use tibco_ems_sys::tibems_bool;
-use tibco_ems_sys::tibems_status;
+#[cfg(feature = "ems-sys")]
+use tibco_ems_sys::{tibemsDestinationType, tibemsMsgType, tibems_bool, tibems_status};
 
 pub mod admin;
 
@@ -173,7 +171,7 @@ pub enum Message {
     ObjectMessage(ObjectMessage),
 }
 
-#[cfg(not(feature = "mock"))]
+#[cfg(feature = "ems-sys")]
 /// open a connection to the Tibco EMS server
 pub fn connect(url: &str, user: &str, password: &str) -> Result<Connection, Error> {
     let mut connection_pointer: usize = 0;
@@ -227,7 +225,7 @@ pub fn connect(url: &str, user: &str, password: &str) -> Result<Connection, Erro
     };
     Ok(conn)
 }
-#[cfg(feature = "mock")]
+#[cfg(not(feature = "ems-sys"))]
 /// open a connection to the Tibco EMS server
 pub fn connect(_url: &str, _user: &str, _password: &str) -> Result<Connection, Error> {
     let conn = Connection {
@@ -239,7 +237,7 @@ pub fn connect(_url: &str, _user: &str, _password: &str) -> Result<Connection, E
     Ok(conn)
 }
 
-#[cfg(feature = "mock")]
+#[cfg(not(feature = "ems-sys"))]
 /// contains a MockServer to emulate a Tibco EMS server
 pub struct MockServer {
     pub connection: Option<Connection>,
@@ -247,7 +245,7 @@ pub struct MockServer {
     pub messages: Vec<(Destination, Message)>,
     pub consumer: Option<Destination>,
 }
-#[cfg(feature = "mock")]
+#[cfg(not(feature = "ems-sys"))]
 pub static mut SERVER: MockServer = MockServer {
     connection: None,
     session: None,
@@ -260,7 +258,7 @@ pub static mut SERVER: MockServer = MockServer {
 //
 
 impl Connection {
-    #[cfg(not(feature = "mock"))]
+    #[cfg(feature = "ems-sys")]
     /// open a session
     pub fn session(&self) -> Result<Session, Error> {
         unsafe {
@@ -297,7 +295,7 @@ impl Connection {
             Ok(session)
         }
     }
-    #[cfg(feature = "mock")]
+    #[cfg(not(feature = "ems-sys"))]
     /// open a session
     pub fn session(&self) -> Result<Session, Error> {
         Ok(Session {
@@ -305,7 +303,7 @@ impl Connection {
             producer_pointer: 0,
         })
     }
-
+    #[cfg(feature = "ems-sys")]
     /// open a session with transaction support
     pub fn transacted_session(&self) -> Result<Session, Error> {
         let session: Session;
@@ -343,6 +341,15 @@ impl Connection {
         }
         Ok(session)
     }
+    #[cfg(not(feature = "ems-sys"))]
+    /// open a session
+    pub fn transacted_session(&self) -> Result<Session, Error> {
+        Ok(Session {
+            pointer: 0,
+            producer_pointer: 0,
+        })
+    }
+    #[cfg(feature = "ems-sys")]
     /// get active url from a ft connection
     /// this is only required for admin connections,
     /// normal connections automatically choose the active server
@@ -366,9 +373,16 @@ impl Connection {
             Ok(url.to_string())
         }
     }
+    #[cfg(not(feature = "ems-sys"))]
+    /// get active url from a ft connection
+    /// this is only required for admin connections,
+    /// normal connections automatically choose the active server
+    pub fn get_active_url(&self) -> Result<String, Error> {
+        Ok("".to_string())
+    }
     // open a consumer as stream of messages
     #[cfg(feature = "streaming")]
-    pub fn open_stream<T: Into<Message>>(
+    pub fn open_stream<'stream, T: Into<Message>>(
         &'stream self,
         destination: &Destination,
         selector: Option<&str>,
@@ -376,9 +390,9 @@ impl Connection {
         let session = self.session().unwrap();
         let consumer = session.queue_consumer(destination, selector).unwrap();
         let stream = stream::MessageStream::<T> {
-            connection: Rc::from(self.clone()),
-            session: Rc::from(session),
-            consumer: Rc::from(consumer),
+            connection: std::rc::Rc::from(self.clone()),
+            session: std::rc::Rc::from(session),
+            consumer: std::rc::Rc::from(consumer),
             message: None,
         };
         Ok(stream)
@@ -390,7 +404,7 @@ impl Connection {
 //
 
 impl Consumer {
-    #[cfg(not(feature = "mock"))]
+    #[cfg(feature = "ems-sys")]
     /// receive messages from a consumer
     ///
     /// function return after wait time with a Message or None
@@ -444,7 +458,7 @@ impl Consumer {
             Ok(Some(msg))
         }
     }
-    #[cfg(feature = "mock")]
+    #[cfg(not(feature = "ems-sys"))]
     /// receive messages from a consumer
     ///
     /// function return after wait time with a Message or None
@@ -468,7 +482,7 @@ impl Consumer {
 //
 
 impl Session {
-    #[cfg(not(feature = "mock"))]
+    #[cfg(feature = "ems-sys")]
     /// open a message consumer for a queue
     pub fn queue_consumer(
         &self,
@@ -553,7 +567,7 @@ impl Session {
         }
         Ok(consumer)
     }
-    #[cfg(feature = "mock")]
+    #[cfg(not(feature = "ems-sys"))]
     /// open a message consumer for a queue
     pub fn queue_consumer(
         &self,
@@ -566,6 +580,7 @@ impl Session {
         Ok(Consumer { pointer: 0 })
     }
 
+    #[cfg(feature = "ems-sys")]
     /// open a message consumer for a topic
     pub fn topic_consumer(
         &self,
@@ -640,6 +655,18 @@ impl Session {
         Ok(consumer)
     }
 
+    #[cfg(not(feature = "ems-sys"))]
+    /// open a message consumer for a topic
+    pub fn topic_consumer(
+        &self,
+        destination: &Destination,
+        subscription_name: &str,
+        selector: Option<&str>,
+    ) -> Result<Consumer, Error> {
+        unimplemented!()
+    }
+
+    #[cfg(feature = "ems-sys")]
     /// open a durable message consumer for a topic
     pub fn topic_durable_consumer(
         &self,
@@ -714,6 +741,18 @@ impl Session {
         Ok(consumer)
     }
 
+    #[cfg(not(feature = "ems-sys"))]
+    /// open a durable message consumer for a topic
+    pub fn topic_durable_consumer(
+        &self,
+        destination: &Destination,
+        durable_name: &str,
+        selector: Option<&str>,
+    ) -> Result<Consumer, Error> {
+        unimplemented!()
+    }
+
+    #[cfg(feature = "ems-sys")]
     /// close a session
     fn close(&self) {
         unsafe {
@@ -732,7 +771,11 @@ impl Session {
             }
         }
     }
-    #[cfg(not(feature = "mock"))]
+    #[cfg(not(feature = "ems-sys"))]
+    /// close a session
+    fn close(&self) {}
+
+    #[cfg(feature = "ems-sys")]
     /// sending a message to a destination (only queues are supported)
     pub fn send_message<M: Into<Message>>(
         &self,
@@ -847,7 +890,8 @@ impl Session {
         }
         Ok(())
     }
-    #[cfg(feature = "mock")]
+
+    #[cfg(not(feature = "ems-sys"))]
     /// sending a message to a destination (only queues are supported)
     pub fn send_message<M: Into<Message>>(
         &self,
@@ -861,6 +905,7 @@ impl Session {
         Ok(())
     }
 
+    #[cfg(feature = "ems-sys")]
     /// request/reply
     pub fn request_reply<M: Into<Message>>(
         &self,
@@ -1023,6 +1068,21 @@ impl Session {
             Ok(Some(result))
         }
     }
+
+    #[cfg(not(feature = "ems-sys"))]
+    /// request/reply - always returns timeout
+    pub fn request_reply<M: Into<Message>>(
+        &self,
+        destination: &Destination,
+        message: M,
+        timeout: i64,
+    ) -> Result<Option<Message>, Error> {
+        let message: Message = message.into();
+        unsafe {
+            SERVER.messages.push((destination.clone(), message));
+        }
+        Ok(None)
+    }
 }
 
 impl Drop for Session {
@@ -1076,6 +1136,7 @@ pub enum TypedValue {
 }
 
 impl Message {
+    #[cfg(feature = "ems-sys")]
     fn destroy(&self) {
         let destroy_msg = |pointer: usize| unsafe {
             let status = tibco_ems_sys::tibemsMsg_Destroy(pointer);
@@ -1107,6 +1168,11 @@ impl Message {
             }
         }
     }
+
+    #[cfg(not(feature = "ems-sys"))]
+    fn destroy(&self) {}
+
+    #[cfg(feature = "ems-sys")]
     /// confirms the message by invoking tibemsMsg_Acknowledge
     pub fn confirm(&self) {
         let ack_msg = |pointer: usize| unsafe {
@@ -1139,6 +1205,11 @@ impl Message {
             }
         }
     }
+    #[cfg(not(feature = "ems-sys"))]
+    /// confirms the message by invoking tibemsMsg_Acknowledge
+    pub fn confirm(&self) {}
+
+    #[cfg(feature = "ems-sys")]
     /// rolls the message back by invoking tibemsMsg_Recover
     pub fn rollback(&self) {
         let recover = |pointer: usize| unsafe {
@@ -1171,6 +1242,10 @@ impl Message {
             }
         }
     }
+
+    #[cfg(not(feature = "ems-sys"))]
+    /// rolls the message back by invoking tibemsMsg_Recover
+    pub fn rollback(&self) {}
 }
 
 impl Drop for Message {
@@ -1179,6 +1254,7 @@ impl Drop for Message {
     }
 }
 
+#[cfg(feature = "ems-sys")]
 fn build_message_pointer_from_message(message: &Message) -> usize {
     let mut msg_pointer: usize = 0;
     unsafe {
@@ -1447,6 +1523,7 @@ fn build_message_pointer_from_message(message: &Message) -> usize {
     msg_pointer
 }
 
+#[cfg(feature = "ems-sys")]
 fn build_message_from_pointer(msg_pointer: usize) -> Message {
     let mut msg: Message;
     let mut header: HashMap<String, TypedValue> = HashMap::new();

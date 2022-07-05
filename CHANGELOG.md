@@ -1,3 +1,10 @@
+# 0.4.12 2022-07-06
+
+* some clippy recommendations
+* modify clone for Text/Map/Bytes message
+    * cloned object no longer contains pointer to c object
+    * cloned object can no longer be confirmed/rolled-back
+
 # 0.4.11 2022-05-15
 
 * check null pointer for JMSType header

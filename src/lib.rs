@@ -45,14 +45,14 @@ pub struct Consumer {
 
 /// Destination, can either be Queue or Topic
 #[allow(dead_code)]
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Destination {
     Queue(String),
     Topic(String),
 }
 
 /// represents a Text Message
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default, Debug, Serialize, Deserialize)]
 pub struct TextMessage {
     /// message body
     pub body: String,
@@ -66,20 +66,20 @@ pub struct TextMessage {
     pub pointer: Option<usize>,
 }
 
-impl Default for TextMessage {
-    fn default() -> Self {
-        TextMessage {
-            body: "".to_string(),
-            header: None,
-            destination: None,
-            reply_to: None,
+impl Clone for TextMessage {
+    fn clone(&self) -> Self {
+        Self {
+            body: self.body.clone(),
+            header: self.header.clone(),
+            destination: self.destination.clone(),
+            reply_to: self.reply_to.clone(),
             pointer: None,
         }
     }
 }
 
 /// represents a Binary Message
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct BytesMessage {
     /// message body
     pub body: Vec<u8>,
@@ -93,8 +93,20 @@ pub struct BytesMessage {
     pub pointer: Option<usize>,
 }
 
+impl Clone for BytesMessage {
+    fn clone(&self) -> Self {
+        Self {
+            body: self.body.clone(),
+            header: self.header.clone(),
+            destination: self.destination.clone(),
+            reply_to: self.reply_to.clone(),
+            pointer: None,
+        }
+    }
+}
+
 /// represents a Object Message
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct ObjectMessage {
     /// message body
     pub body: Vec<u8>,
@@ -108,8 +120,20 @@ pub struct ObjectMessage {
     pub pointer: Option<usize>,
 }
 
+impl Clone for ObjectMessage {
+    fn clone(&self) -> Self {
+        Self {
+            body: self.body.clone(),
+            header: self.header.clone(),
+            destination: self.destination.clone(),
+            reply_to: self.reply_to.clone(),
+            pointer: None,
+        }
+    }
+}
+
 /// represents a Map Message
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Default)]
 pub struct MapMessage {
     /// message body map properties
     pub body: HashMap<String, TypedValue>,
@@ -121,6 +145,18 @@ pub struct MapMessage {
     pub reply_to: Option<Destination>,
     /// point to the ems native object
     pub pointer: Option<usize>,
+}
+
+impl Clone for MapMessage {
+    fn clone(&self) -> Self {
+        Self {
+            body: self.body.clone(),
+            header: self.header.clone(),
+            destination: self.destination.clone(),
+            reply_to: self.reply_to.clone(),
+            pointer: None,
+        }
+    }
 }
 
 /// Message enum wich represents the different message types
@@ -223,7 +259,7 @@ pub static mut SERVER: MockServer = MockServer {
 // connection
 //
 
-impl<'stream> Connection {
+impl Connection {
     #[cfg(not(feature = "mock"))]
     /// open a session
     pub fn session(&self) -> Result<Session, Error> {

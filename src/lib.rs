@@ -1804,7 +1804,7 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
                     let val_buf_ref: *const std::os::raw::c_char = val_buf_vec.as_ptr();
                     let mut bool_result: tibems_bool = tibems_bool::TIBEMS_TRUE;
                     //check for ems compress header
-                    if header_name == "TIBCO_JMS_COMPRESS" {
+                    if header_name == "JMS_TIBCO_COMPRESS" {
                         let status = tibco_ems_sys::tibemsMsg_GetBooleanProperty(
                             msg_pointer,
                             buf_ref,

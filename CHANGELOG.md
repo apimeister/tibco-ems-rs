@@ -1,6 +1,10 @@
+# 0.4.14 2022-08012
+
+* fix typo
+
 # 0.4.13 2022-08-12
 
-* return TIBCO_JMS_COMPRESS header as boolean
+* return JMS_TIBCO_COMPRESS header as boolean
 
 # 0.4.12 2022-07-06
 

@@ -1802,22 +1802,43 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
                     let header_name = CStr::from_ptr(buf_ref).to_str().unwrap();
                     let val_buf_vec: Vec<i8> = vec![0; 0];
                     let val_buf_ref: *const std::os::raw::c_char = val_buf_vec.as_ptr();
-                    let status = tibco_ems_sys::tibemsMsg_GetStringProperty(
-                        msg_pointer,
-                        buf_ref,
-                        &val_buf_ref,
-                    );
-                    match status {
-                        tibems_status::TIBEMS_OK => {
-                            trace!("tibemsMsg_GetStringProperty: {:?}", status)
+                    let mut bool_result: tibems_bool = tibems_bool::TIBEMS_TRUE;
+                    //check for ems compress header
+                    if header_name == "TIBCO_JMS_COMPRESS" {
+                        let status = tibco_ems_sys::tibemsMsg_GetBooleanProperty(
+                            msg_pointer,
+                            buf_ref,
+                            &mut bool_result,
+                        );
+                        match status {
+                            tibems_status::TIBEMS_OK => {
+                                trace!("tibemsMsg_GetBooleanProperty: {:?}", status);
+                                let value = match bool_result {
+                                    tibems_bool::TIBEMS_TRUE => true,
+                                    tibems_bool::TIBEMS_FALSE => false,
+                                };
+                                header.insert(header_name.to_string(), TypedValue::Boolean(value));
+                            }
+                            _ => error!("tibemsMsg_GetBooleanProperty: {:?}", status),
                         }
-                        _ => error!("tibemsMsg_GetStringProperty: {:?}", status),
+                    } else {
+                        let status = tibco_ems_sys::tibemsMsg_GetStringProperty(
+                            msg_pointer,
+                            buf_ref,
+                            &val_buf_ref,
+                        );
+                        match status {
+                            tibems_status::TIBEMS_OK => {
+                                trace!("tibemsMsg_GetStringProperty: {:?}", status)
+                            }
+                            _ => error!("tibemsMsg_GetStringProperty: {:?}", status),
+                        }
+                        let header_value = CStr::from_ptr(val_buf_ref).to_str().unwrap();
+                        header.insert(
+                            header_name.to_string(),
+                            TypedValue::String(header_value.to_string()),
+                        );
                     }
-                    let header_value = CStr::from_ptr(val_buf_ref).to_str().unwrap();
-                    header.insert(
-                        header_name.to_string(),
-                        TypedValue::String(header_value.to_string()),
-                    );
                 }
                 tibems_status::TIBEMS_NOT_FOUND => {
                     break;

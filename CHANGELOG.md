@@ -1,3 +1,7 @@
+# 0.4.13 2022-08-12
+
+* return TIBCO_JMS_COMPRESS header as boolean
+
 # 0.4.12 2022-07-06
 
 * some clippy recommendations

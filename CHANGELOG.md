@@ -1,4 +1,8 @@
-# 0.4.14 2022-08012
+# 0.4.15 2022-09-26
+
+* From trait not implemented for ObjectMessage
+
+# 0.4.14 2022-08-12
 
 * fix typo
 

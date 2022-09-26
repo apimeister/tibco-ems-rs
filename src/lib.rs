@@ -1113,6 +1113,12 @@ impl From<BytesMessage> for Message {
     }
 }
 
+impl From<ObjectMessage> for Message {
+    fn from(msg: ObjectMessage) -> Self {
+        Message::ObjectMessage(msg)
+    }
+}
+
 /// represents a typed value, which is used for message header and message properties
 #[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

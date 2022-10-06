@@ -1454,6 +1454,20 @@ fn build_message_pointer_from_message(message: &Message) -> usize {
                     _ => error!("tibemsMsg_SetCorrelationId: {:?}", status),
                 }
             }
+            //look for jms type
+            if let Some(jms_type) = headers.get("JMSType") {
+                let jms_type_val = extract!(TypedValue::String(_), jms_type)
+                    .expect("extract correlation id");
+                let c_jms_type = CString::new(jms_type_val.as_str()).unwrap();
+                let status = tibco_ems_sys::tibemsMsg_SetType(
+                    msg_pointer,
+                    c_jms_type.as_ptr(),
+                );
+                match status {
+                    tibems_status::TIBEMS_OK => trace!("tibemsMsg_SetType: {:?}", status),
+                    _ => error!("tibemsMsg_SetType: {:?}", status),
+                }
+            }
             //do other headers (also do correlation id again as custom header)
             for (key, val) in &headers {
                 let c_name = CString::new(key.to_string()).unwrap();

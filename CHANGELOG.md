@@ -1,3 +1,7 @@
+# 0.4.16 2022-10-06
+
+* allow JMSType to be set as header
+
 # 0.4.15 2022-09-26
 
 * From trait not implemented for ObjectMessage

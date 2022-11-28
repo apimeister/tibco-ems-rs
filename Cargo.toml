@@ -23,7 +23,7 @@ ems-sys = ["dep:tibco_ems-sys"]
 test_with_ems = []
 
 [dev-dependencies]
-env_logger = "0.9"
+env_logger = "0.10"
 tokio = { version = "1", features = ["full"] }
 futures = "0.3"
 

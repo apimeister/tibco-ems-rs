@@ -171,6 +171,17 @@ pub enum Message {
     ObjectMessage(ObjectMessage),
 }
 
+impl Message {
+    fn get_type(&self)->&str{
+        match self{
+            Message::TextMessage(_) => {"TextMessage"}
+            Message::BytesMessage(_) => {"BytesMessage"}
+            Message::MapMessage(_) => {"MapMessage"}
+            Message::ObjectMessage(_) => {"ObjectMessage"}
+        }
+    }
+}
+
 #[cfg(feature = "ems-sys")]
 /// open a connection to the Tibco EMS server
 pub fn connect(url: &str, user: &str, password: &str) -> Result<Connection, Error> {
@@ -456,6 +467,102 @@ impl Consumer {
             }
             let msg = build_message_from_pointer(msg_pointer);
             Ok(Some(msg))
+        }
+    }
+
+    pub fn receive_text_message(
+        &self, wait_time_ms: Option<i64>
+    ) -> Result<Option<TextMessage>, Error> {
+        let msg_option = self.receive_message(wait_time_ms)?;
+        match msg_option {
+            Some(msg)=>{
+                match &msg {
+                    Message::TextMessage(text_msg)=>{
+                        Ok(Some(text_msg.to_owned()))
+                    }
+                    _ => {
+                        Err(Error::new(
+                            ErrorKind::Other,
+                            format!("received message with unexpected type (expected: TextMessage, found: {}", msg.get_type()),
+                        ))
+                    }
+                }
+            }
+            None =>{
+                Ok(None)
+            }
+        }
+    }
+
+    pub fn receive_byte_message(
+        &self, wait_time_ms: Option<i64>
+    ) -> Result<Option<BytesMessage>, Error> {
+        let msg_option = self.receive_message(wait_time_ms)?;
+        match msg_option {
+            Some(msg)=>{
+                match &msg {
+                    Message::BytesMessage(bytes_msg)=>{
+                        Ok(Some(bytes_msg.to_owned()))
+                    }
+                    _ => {
+                        Err(Error::new(
+                            ErrorKind::Other,
+                            format!("received message with unexpected type (expected: BytesMessage, found: {}", msg.get_type()),
+                        ))
+                    }
+                }
+            }
+            None =>{
+                Ok(None)
+            }
+        }
+    }
+
+    pub fn receive_map_message(
+        &self, wait_time_ms: Option<i64>
+    ) -> Result<Option<MapMessage>, Error> {
+        let msg_option = self.receive_message(wait_time_ms)?;
+        match msg_option {
+            Some(msg)=>{
+                match &msg {
+                    Message::MapMessage(map_msg)=>{
+                        Ok(Some(map_msg.to_owned()))
+                    }
+                    _ => {
+                        Err(Error::new(
+                            ErrorKind::Other,
+                            format!("received message with unexpected type (expected: MapMessage, found: {}", msg.get_type()),
+                        ))
+                    }
+                }
+            }
+            None =>{
+                Ok(None)
+            }
+        }
+    }
+
+    pub fn receive_object_message(
+        &self, wait_time_ms: Option<i64>
+    ) -> Result<Option<ObjectMessage>, Error> {
+        let msg_option = self.receive_message(wait_time_ms)?;
+        match msg_option {
+            Some(msg)=>{
+                match &msg {
+                    Message::ObjectMessage(object_msg)=>{
+                        Ok(Some(object_msg.to_owned()))
+                    }
+                    _ => {
+                        Err(Error::new(
+                            ErrorKind::Other,
+                            format!("received message with unexpected type (expected: ObjectMessage, found: {}", msg.get_type()),
+                        ))
+                    }
+                }
+            }
+            None =>{
+                Ok(None)
+            }
         }
     }
     #[cfg(not(feature = "ems-sys"))]

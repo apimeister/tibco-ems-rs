@@ -1,3 +1,9 @@
+# 0.5.0 2023-01-10
+
+* typed jms receive method
+* `Display`-trait of TypedValued returns string representation of the value
+* experimental tracing support for send_message (feature flagged)
+
 # 0.4.16 2022-10-06
 
 * allow JMSType to be set as header

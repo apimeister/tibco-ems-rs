@@ -1000,23 +1000,28 @@ impl Session {
         use opentelemetry::trace::Span;
         use opentelemetry::trace::Tracer;
         use opentelemetry::trace::TracerProvider;
+        use opentelemetry::sdk::trace::RandomIdGenerator;
+        use opentelemetry::sdk::trace::IdGenerator;
         let tracer = tracer_provider.versioned_tracer("ems", Some("0.5"), None);
         let span = tracer.start("send");
+        let id_generator = RandomIdGenerator::default();
+        let trace_id = id_generator.new_trace_id();
+        let span_id = id_generator.new_span_id();
         let headers = match message {
             Message::BytesMessage(b) => b.header.as_mut(),
             Message::MapMessage(m) => m.header.as_mut(),
             Message::TextMessage(t) => t.header.as_mut(),
             Message::ObjectMessage(o) => o.header.as_mut(),
         };
-        let ctx = span.span_context();
+        let _ctx = span.span_context();
         if let Some(e) = headers {
             e.insert(
                 "spanId".to_string(),
-                TypedValue::String(ctx.span_id().to_string()),
+                TypedValue::String(span_id.to_string()),
             );
             e.insert(
                 "traceId".to_string(),
-                TypedValue::String(ctx.trace_id().to_string()),
+                TypedValue::String(trace_id.to_string()),
             );
         };
         span

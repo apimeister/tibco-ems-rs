@@ -1068,6 +1068,11 @@ impl Session {
                         "messaging.destination_kind",
                         "queue",
                     ));
+                    #[cfg(feature = "tracing")]
+                    span.set_attribute(opentelemetry::KeyValue::new(
+                        "messaging.system",
+                        "TibcoEMS",
+                    ));
                     let c_destination = CString::new(name.clone()).unwrap();
                     let status = tibco_ems_sys::tibemsDestination_Create(
                         &mut dest,

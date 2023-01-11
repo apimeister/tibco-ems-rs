@@ -997,23 +997,33 @@ impl Session {
     #[cfg(feature = "tracing")]
     fn add_trace_to_message(&self, message: &mut Message) -> impl opentelemetry::trace::Span {
         let tracer_provider = opentelemetry::global::tracer_provider();
+        use opentelemetry::sdk::trace::IdGenerator;
+        use opentelemetry::sdk::trace::RandomIdGenerator;
         use opentelemetry::trace::Span;
+        use opentelemetry::trace::SpanId;
+        use opentelemetry::trace::TraceId;
         use opentelemetry::trace::Tracer;
         use opentelemetry::trace::TracerProvider;
-        use opentelemetry::sdk::trace::RandomIdGenerator;
-        use opentelemetry::sdk::trace::IdGenerator;
         let tracer = tracer_provider.versioned_tracer("ems", Some("0.5"), None);
         let span = tracer.start("send");
         let id_generator = RandomIdGenerator::default();
-        let trace_id = id_generator.new_trace_id();
-        let span_id = id_generator.new_span_id();
         let headers = match message {
             Message::BytesMessage(b) => b.header.as_mut(),
             Message::MapMessage(m) => m.header.as_mut(),
             Message::TextMessage(t) => t.header.as_mut(),
             Message::ObjectMessage(o) => o.header.as_mut(),
         };
-        let _ctx = span.span_context();
+        let ctx = span.span_context();
+        let span_id = if ctx.span_id() == SpanId::INVALID {
+            id_generator.new_span_id()
+        } else {
+            ctx.span_id()
+        };
+        let trace_id = if ctx.trace_id() == TraceId::INVALID {
+            id_generator.new_trace_id()
+        } else {
+            ctx.trace_id()
+        };
         if let Some(e) = headers {
             e.insert(
                 "spanId".to_string(),
@@ -1038,7 +1048,7 @@ impl Session {
         let mut message: Message = message.into();
         #[cfg(not(feature = "tracing"))]
         let message: Message = message.into();
-        
+
         let mut dest: usize = 0;
         let mut local_producer: usize = 0;
         #[cfg(feature = "tracing")]
@@ -1049,9 +1059,15 @@ impl Session {
             match destination {
                 Destination::Queue(name) => {
                     #[cfg(feature = "tracing")]
-                    span.set_attribute(opentelemetry::KeyValue::new("messaging.destination", name.clone()));
+                    span.set_attribute(opentelemetry::KeyValue::new(
+                        "messaging.destination",
+                        name.clone(),
+                    ));
                     #[cfg(feature = "tracing")]
-                    span.set_attribute(opentelemetry::KeyValue::new("messaging.destination_kind", "queue"));
+                    span.set_attribute(opentelemetry::KeyValue::new(
+                        "messaging.destination_kind",
+                        "queue",
+                    ));
                     let c_destination = CString::new(name.clone()).unwrap();
                     let status = tibco_ems_sys::tibemsDestination_Create(
                         &mut dest,

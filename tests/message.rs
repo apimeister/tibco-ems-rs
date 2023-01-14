@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod messages {
+    use tibco_ems::Message;
 
     #[test]
     fn text_message_default() -> Result<(), String> {
@@ -73,5 +74,49 @@ mod messages {
         };
         let msg2 = msg.clone();
         assert_eq!(msg2.pointer, None)
+    }
+
+    #[test]
+    fn object_message_display() {
+        let msg = tibco_ems::ObjectMessage {
+            pointer: Some(5),
+            ..Default::default()
+        };
+        let msg2: Message = msg.into();
+        let str = format!("{}", msg2);
+        assert_eq!(str, "ObjectMessage")
+    }
+
+    #[test]
+    fn bytes_message_display() {
+        let msg = tibco_ems::BytesMessage {
+            pointer: Some(5),
+            ..Default::default()
+        };
+        let msg2: Message = msg.into();
+        let str = format!("{}", msg2);
+        assert_eq!(str, "BytesMessage")
+    }
+
+    #[test]
+    fn map_message_display() {
+        let msg = tibco_ems::MapMessage {
+            pointer: Some(5),
+            ..Default::default()
+        };
+        let msg2: Message = msg.into();
+        let str = format!("{}", msg2);
+        assert_eq!(str, "MapMessage")
+    }
+
+    #[test]
+    fn text_message_display() {
+        let msg = tibco_ems::TextMessage {
+            pointer: Some(5),
+            ..Default::default()
+        };
+        let msg2: Message = msg.into();
+        let str = format!("{}", msg2);
+        assert_eq!(str, "TextMessage")
     }
 }

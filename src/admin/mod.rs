@@ -738,9 +738,9 @@ pub fn get_server_state(session: &Session) -> Result<ServerState, Error> {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BridgeInfo {
-    // source of the bridge
+    /// source of the bridge
     pub source: Destination,
-    // target of the bridge
+    /// target of the bridge
     pub target: Destination,
     /// selector
     pub selector: Option<String>,
@@ -779,8 +779,8 @@ pub enum AdminCommands {
 /// server states
 #[derive(Debug, Clone)]
 pub enum ServerState {
-    // server is standby
+    /// server is standby
     Standby = 3,
-    // server is active
+    /// server is active
     Active = 4,
 }

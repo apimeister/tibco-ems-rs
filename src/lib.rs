@@ -1,3 +1,4 @@
+#![warn(missing_docs)]
 //! Tibco EMS binding.
 
 #[cfg(feature = "ems-sys")]
@@ -53,7 +54,9 @@ pub struct Consumer {
 #[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Destination {
+    /// Destination type Queue
     Queue(String),
+    /// Destination type Topic
     Topic(String),
 }
 

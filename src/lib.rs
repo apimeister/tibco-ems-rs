@@ -1,14 +1,23 @@
+#![warn(missing_docs)]
 //! Tibco EMS binding.
 
+#[cfg(feature = "ems-sys")]
 use enum_extract::extract;
+#[cfg(feature = "ems-sys")]
 use log::{error, trace};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+#[cfg(feature = "ems-sys")]
 use std::ffi::c_void;
+#[cfg(feature = "ems-sys")]
 use std::ffi::CStr;
+#[cfg(feature = "ems-sys")]
 use std::ffi::CString;
+use std::fmt;
 use std::io::Error;
+#[cfg(feature = "ems-sys")]
 use std::io::ErrorKind;
+#[cfg(feature = "ems-sys")]
 use std::ops::Deref;
 use std::sync::Arc;
 #[cfg(feature = "ems-sys")]
@@ -45,7 +54,9 @@ pub struct Consumer {
 #[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Destination {
+    /// Destination type Queue
     Queue(String),
+    /// Destination type Topic
     Topic(String),
 }
 
@@ -169,6 +180,17 @@ pub enum Message {
     MapMessage(MapMessage),
     /// represents a Object Message
     ObjectMessage(ObjectMessage),
+}
+
+impl fmt::Display for Message {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Message::TextMessage(_) => write!(f, "TextMessage"),
+            Message::BytesMessage(_) => write!(f, "BytesMessage"),
+            Message::MapMessage(_) => write!(f, "MapMessage"),
+            Message::ObjectMessage(_) => write!(f, "ObjectMessage"),
+        }
+    }
 }
 
 #[cfg(feature = "ems-sys")]
@@ -341,6 +363,7 @@ impl Connection {
         }
         Ok(session)
     }
+
     #[cfg(not(feature = "ems-sys"))]
     /// open a session
     pub fn transacted_session(&self) -> Result<Session, Error> {
@@ -349,6 +372,7 @@ impl Connection {
             producer_pointer: 0,
         })
     }
+
     #[cfg(feature = "ems-sys")]
     /// get active url from a ft connection
     /// this is only required for admin connections,
@@ -373,6 +397,7 @@ impl Connection {
             Ok(url.to_string())
         }
     }
+
     #[cfg(not(feature = "ems-sys"))]
     /// get active url from a ft connection
     /// this is only required for admin connections,
@@ -380,6 +405,7 @@ impl Connection {
     pub fn get_active_url(&self) -> Result<String, Error> {
         Ok("".to_string())
     }
+
     // open a consumer as stream of messages
     #[cfg(feature = "streaming")]
     pub fn open_stream<'stream, T: Into<Message>>(
@@ -407,7 +433,7 @@ impl Consumer {
     #[cfg(feature = "ems-sys")]
     /// receive messages from a consumer
     ///
-    /// function return after wait time with a Message or None
+    /// function returns after wait time with a Message or None
     /// a wait time of None blocks until a message is available
     pub fn receive_message(&self, wait_time_ms: Option<i64>) -> Result<Option<Message>, Error> {
         unsafe {
@@ -458,11 +484,112 @@ impl Consumer {
             Ok(Some(msg))
         }
     }
+
+    #[cfg(feature = "ems-sys")]
+    /// receive text messages from a consumer
+    ///
+    /// function returns after wait time with a Message or None
+    /// a wait time of None blocks until a message is available
+    pub fn receive_text_message(
+        &self,
+        wait_time_ms: Option<i64>,
+    ) -> Result<Option<TextMessage>, Error> {
+        let msg_option = self.receive_message(wait_time_ms)?;
+        match msg_option {
+            Some(msg) => match &msg {
+                Message::TextMessage(text_msg) => Ok(Some(text_msg.to_owned())),
+                _ => Err(Error::new(
+                    ErrorKind::Other,
+                    format!(
+                        "received message with unexpected type (expected: TextMessage, found: {}",
+                        msg
+                    ),
+                )),
+            },
+            None => Ok(None),
+        }
+    }
+
+    #[cfg(feature = "ems-sys")]
+    /// receive bytes messages from a consumer
+    ///
+    /// function returns after wait time with a Message or None
+    /// a wait time of None blocks until a message is available
+    pub fn receive_bytes_message(
+        &self,
+        wait_time_ms: Option<i64>,
+    ) -> Result<Option<BytesMessage>, Error> {
+        let msg_option = self.receive_message(wait_time_ms)?;
+        match msg_option {
+            Some(msg) => match &msg {
+                Message::BytesMessage(bytes_msg) => Ok(Some(bytes_msg.to_owned())),
+                _ => Err(Error::new(
+                    ErrorKind::Other,
+                    format!(
+                        "received message with unexpected type (expected: BytesMessage, found: {}",
+                        msg
+                    ),
+                )),
+            },
+            None => Ok(None),
+        }
+    }
+
+    #[cfg(feature = "ems-sys")]
+    /// receive map messages from a consumer
+    ///
+    /// function returns after wait time with a Message or None
+    /// a wait time of None blocks until a message is available
+    pub fn receive_map_message(
+        &self,
+        wait_time_ms: Option<i64>,
+    ) -> Result<Option<MapMessage>, Error> {
+        let msg_option = self.receive_message(wait_time_ms)?;
+        match msg_option {
+            Some(msg) => match &msg {
+                Message::MapMessage(map_msg) => Ok(Some(map_msg.to_owned())),
+                _ => Err(Error::new(
+                    ErrorKind::Other,
+                    format!(
+                        "received message with unexpected type (expected: MapMessage, found: {}",
+                        msg
+                    ),
+                )),
+            },
+            None => Ok(None),
+        }
+    }
+
+    #[cfg(feature = "ems-sys")]
+    /// receive object messages from a consumer
+    ///
+    /// function returns after wait time with a Message or None
+    /// a wait time of None blocks until a message is available
+    pub fn receive_object_message(
+        &self,
+        wait_time_ms: Option<i64>,
+    ) -> Result<Option<ObjectMessage>, Error> {
+        let msg_option = self.receive_message(wait_time_ms)?;
+        match msg_option {
+            Some(msg) => match &msg {
+                Message::ObjectMessage(object_msg) => Ok(Some(object_msg.to_owned())),
+                _ => Err(Error::new(
+                    ErrorKind::Other,
+                    format!(
+                        "received message with unexpected type (expected: ObjectMessage, found: {}",
+                        msg
+                    ),
+                )),
+            },
+            None => Ok(None),
+        }
+    }
+
     #[cfg(not(feature = "ems-sys"))]
     /// receive messages from a consumer
     ///
-    /// function return after wait time with a Message or None
-    /// a wait time of None blocks until a message is available
+    /// function returns after wait time with a Message or None
+    /// the wait time is ignored
     pub fn receive_message(&self, _wait_time_ms: Option<i64>) -> Result<Option<Message>, Error> {
         unsafe {
             let consumer_destination = SERVER.consumer.clone().unwrap();
@@ -471,6 +598,101 @@ impl Consumer {
                 if dest == consumer_destination {
                     return Ok(Some(msg));
                 }
+            }
+        }
+        Ok(None)
+    }
+    #[cfg(not(feature = "ems-sys"))]
+    /// receive text messages from a consumer
+    ///
+    /// function returns after wait time with a Message or None
+    /// the wait time is ignored
+    pub fn receive_text_message(
+        &self,
+        _wait_time_ms: Option<i64>,
+    ) -> Result<Option<TextMessage>, Error> {
+        unsafe {
+            let consumer_destination = SERVER.consumer.clone().unwrap();
+            let messages = SERVER.messages.clone();
+            for (dest, msg) in messages {
+                if dest == consumer_destination {
+                    return match msg {
+                        Message::TextMessage(ref msg) => Ok(Some(msg.to_owned())),
+                        _ => Ok(None),
+                    };
+                };
+            }
+        }
+        Ok(None)
+    }
+
+    #[cfg(not(feature = "ems-sys"))]
+    /// receive bytes messages from a consumer
+    ///
+    /// function returns after wait time with a Message or None
+    /// the wait time is ignored
+    pub fn receive_bytes_message(
+        &self,
+        _wait_time_ms: Option<i64>,
+    ) -> Result<Option<BytesMessage>, Error> {
+        unsafe {
+            let consumer_destination = SERVER.consumer.clone().unwrap();
+            let messages = SERVER.messages.clone();
+            for (dest, msg) in messages {
+                if dest == consumer_destination {
+                    return match msg {
+                        Message::BytesMessage(ref msg) => Ok(Some(msg.to_owned())),
+                        _ => Ok(None),
+                    };
+                };
+            }
+        }
+        Ok(None)
+    }
+
+    #[cfg(not(feature = "ems-sys"))]
+    /// receive map messages from a consumer
+    ///
+    /// function returns after wait time with a Message or None
+    /// the wait time is ignored
+    pub fn receive_map_message(
+        &self,
+        _wait_time_ms: Option<i64>,
+    ) -> Result<Option<MapMessage>, Error> {
+        unsafe {
+            let consumer_destination = SERVER.consumer.clone().unwrap();
+            let messages = SERVER.messages.clone();
+            for (dest, msg) in messages {
+                if dest == consumer_destination {
+                    return match msg {
+                        Message::MapMessage(ref msg) => Ok(Some(msg.to_owned())),
+                        _ => Ok(None),
+                    };
+                };
+            }
+        }
+        Ok(None)
+    }
+
+    #[cfg(not(feature = "ems-sys"))]
+    /// receive object messages from a consumer
+    ///
+    /// function returns after wait time with a Message or None
+    /// the wait time is ignored
+    pub fn receive_object_message(
+        &self,
+        _wait_time_ms: Option<i64>,
+    ) -> Result<Option<ObjectMessage>, Error> {
+        unsafe {
+            let consumer_destination = SERVER.consumer.clone().unwrap();
+            let messages = SERVER.messages.clone();
+            for (dest, msg) in messages {
+                if dest == consumer_destination {
+                    return match msg {
+                        Message::ObjectMessage(ref msg) => Ok(Some(msg.to_owned())),
+                        _ => Ok(None),
+                    };
+                };
             }
         }
         Ok(None)
@@ -659,9 +881,9 @@ impl Session {
     /// open a message consumer for a topic
     pub fn topic_consumer(
         &self,
-        destination: &Destination,
-        subscription_name: &str,
-        selector: Option<&str>,
+        _destination: &Destination,
+        _subscription_name: &str,
+        _selector: Option<&str>,
     ) -> Result<Consumer, Error> {
         unimplemented!()
     }
@@ -745,9 +967,9 @@ impl Session {
     /// open a durable message consumer for a topic
     pub fn topic_durable_consumer(
         &self,
-        destination: &Destination,
-        durable_name: &str,
-        selector: Option<&str>,
+        _destination: &Destination,
+        _durable_name: &str,
+        _selector: Option<&str>,
     ) -> Result<Consumer, Error> {
         unimplemented!()
     }
@@ -775,6 +997,49 @@ impl Session {
     /// close a session
     fn close(&self) {}
 
+    #[cfg(feature = "tracing")]
+    fn add_trace_to_message(&self, message: &mut Message) -> impl opentelemetry::trace::Span {
+        let tracer_provider = opentelemetry::global::tracer_provider();
+        use opentelemetry::sdk::trace::IdGenerator;
+        use opentelemetry::sdk::trace::RandomIdGenerator;
+        use opentelemetry::trace::Span;
+        use opentelemetry::trace::SpanId;
+        use opentelemetry::trace::TraceId;
+        use opentelemetry::trace::Tracer;
+        use opentelemetry::trace::TracerProvider;
+        let tracer = tracer_provider.versioned_tracer("ems", Some("0.5"), None);
+        let span = tracer.start("send");
+        let id_generator = RandomIdGenerator::default();
+        let headers = match message {
+            Message::BytesMessage(b) => b.header.as_mut(),
+            Message::MapMessage(m) => m.header.as_mut(),
+            Message::TextMessage(t) => t.header.as_mut(),
+            Message::ObjectMessage(o) => o.header.as_mut(),
+        };
+        let ctx = span.span_context();
+        let span_id = if ctx.span_id() == SpanId::INVALID {
+            id_generator.new_span_id()
+        } else {
+            ctx.span_id()
+        };
+        let trace_id = if ctx.trace_id() == TraceId::INVALID {
+            id_generator.new_trace_id()
+        } else {
+            ctx.trace_id()
+        };
+        if let Some(e) = headers {
+            e.insert(
+                "spanId".to_string(),
+                TypedValue::String(span_id.to_string()),
+            );
+            e.insert(
+                "traceId".to_string(),
+                TypedValue::String(trace_id.to_string()),
+            );
+        };
+        span
+    }
+
     #[cfg(feature = "ems-sys")]
     /// sending a message to a destination (only queues are supported)
     pub fn send_message<M: Into<Message>>(
@@ -782,12 +1047,35 @@ impl Session {
         destination: &Destination,
         message: M,
     ) -> Result<(), Error> {
+        #[cfg(feature = "tracing")]
+        let mut message: Message = message.into();
+        #[cfg(not(feature = "tracing"))]
         let message: Message = message.into();
+
         let mut dest: usize = 0;
         let mut local_producer: usize = 0;
+        #[cfg(feature = "tracing")]
+        let mut span = self.add_trace_to_message(&mut message);
+        #[cfg(feature = "tracing")]
+        use opentelemetry::trace::Span;
         unsafe {
             match destination {
                 Destination::Queue(name) => {
+                    #[cfg(feature = "tracing")]
+                    span.set_attribute(opentelemetry::KeyValue::new(
+                        "messaging.destination",
+                        name.clone(),
+                    ));
+                    #[cfg(feature = "tracing")]
+                    span.set_attribute(opentelemetry::KeyValue::new(
+                        "messaging.destination_kind",
+                        "queue",
+                    ));
+                    #[cfg(feature = "tracing")]
+                    span.set_attribute(opentelemetry::KeyValue::new(
+                        "messaging.system",
+                        "TibcoEMS",
+                    ));
                     let c_destination = CString::new(name.clone()).unwrap();
                     let status = tibco_ems_sys::tibemsDestination_Create(
                         &mut dest,
@@ -888,6 +1176,8 @@ impl Session {
                 _ => error!("tibemsDestination_Destroy: {:?}", status),
             }
         }
+        #[cfg(feature = "tracing")]
+        span.end();
         Ok(())
     }
 
@@ -1070,12 +1360,12 @@ impl Session {
     }
 
     #[cfg(not(feature = "ems-sys"))]
-    /// request/reply - always returns timeout
+    /// request/reply - always returns none
     pub fn request_reply<M: Into<Message>>(
         &self,
         destination: &Destination,
         message: M,
-        timeout: i64,
+        _timeout: i64,
     ) -> Result<Option<Message>, Error> {
         let message: Message = message.into();
         unsafe {
@@ -1139,6 +1429,21 @@ pub enum TypedValue {
     Map(MapMessage),
     /// represents a boolean Value
     Boolean(bool),
+}
+
+impl fmt::Display for TypedValue {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            TypedValue::String(s) => write!(f, "{s}"),
+            TypedValue::Boolean(b) => write!(f, "{b}"),
+            TypedValue::Integer(b) => write!(f, "{b}"),
+            TypedValue::Long(b) => write!(f, "{b}"),
+            TypedValue::Float(b) => write!(f, "{b}"),
+            TypedValue::Double(b) => write!(f, "{b}"),
+            TypedValue::Binary(b) => write!(f, "{b:?}"),
+            TypedValue::Map(m) => write!(f, "{m:?}"),
+        }
+    }
 }
 
 impl Message {
@@ -1456,13 +1761,10 @@ fn build_message_pointer_from_message(message: &Message) -> usize {
             }
             //look for jms type
             if let Some(jms_type) = headers.get("JMSType") {
-                let jms_type_val = extract!(TypedValue::String(_), jms_type)
-                    .expect("extract correlation id");
+                let jms_type_val =
+                    extract!(TypedValue::String(_), jms_type).expect("extract correlation id");
                 let c_jms_type = CString::new(jms_type_val.as_str()).unwrap();
-                let status = tibco_ems_sys::tibemsMsg_SetType(
-                    msg_pointer,
-                    c_jms_type.as_ptr(),
-                );
+                let status = tibco_ems_sys::tibemsMsg_SetType(msg_pointer, c_jms_type.as_ptr());
                 match status {
                     tibems_status::TIBEMS_OK => trace!("tibemsMsg_SetType: {:?}", status),
                     _ => error!("tibemsMsg_SetType: {:?}", status),

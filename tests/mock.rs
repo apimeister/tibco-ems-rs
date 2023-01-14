@@ -1,5 +1,5 @@
 #[cfg(test)]
-#[cfg(feature = "mock")]
+#[cfg(not(feature = "ems-sys"))]
 mod mock {
 
     #[test]

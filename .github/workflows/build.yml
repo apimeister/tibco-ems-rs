@@ -1,4 +1,4 @@
-name: api
+name: build
 on:
   workflow_dispatch:
   pull_request:
@@ -42,7 +42,7 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: test
-        args: -q
+        args: -q --no-default-features
     - name: Build release artifact
       uses: actions-rs/cargo@v1
       with:

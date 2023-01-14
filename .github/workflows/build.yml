@@ -29,8 +29,6 @@ jobs:
       with:
         toolchain: stable
         components: clippy
-    - name: Install Protoc
-      uses: arduino/setup-protoc@v1
     - name: Run rustfmt
       uses: actions-rs/cargo@v1
       with:

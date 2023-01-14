@@ -1,7 +1,8 @@
-# 0.5.0 2023-01-10
+# 0.5.0 2023-01-14
 
 * typed jms receive method
 * `Display`-trait of TypedValued returns string representation of the value
+* `Display`-trait of Message returns the type of the message
 * experimental tracing support for send_message (feature flagged)
 
 # 0.4.16 2022-10-06

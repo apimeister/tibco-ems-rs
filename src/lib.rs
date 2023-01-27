@@ -203,10 +203,10 @@ pub fn connect(url: &str, user: &str, password: &str) -> Result<Connection, Erro
         let status = tibco_ems_sys::tibemsConnectionFactory_SetServerURL(factory, c_url.as_ptr());
         match status {
             tibems_status::TIBEMS_OK => {
-                trace!("tibemsConnectionFactory_SetServerURL: {:?}", status)
+                trace!("tibemsConnectionFactory_SetServerURL: {status:?}")
             }
             _ => {
-                error!("tibemsConnectionFactory_SetServerURL: {:?}", status);
+                error!("tibemsConnectionFactory_SetServerURL: {status:?}");
                 return Err(Error::new(ErrorKind::InvalidData, "cannot set server url"));
             }
         }
@@ -220,10 +220,10 @@ pub fn connect(url: &str, user: &str, password: &str) -> Result<Connection, Erro
         );
         match status {
             tibems_status::TIBEMS_OK => {
-                trace!("tibemsConnectionFactory_CreateConnection: {:?}", status)
+                trace!("tibemsConnectionFactory_CreateConnection: {status:?}")
             }
             _ => {
-                error!("tibemsConnectionFactory_CreateConnection: {:?}", status);
+                error!("tibemsConnectionFactory_CreateConnection: {status:?}");
                 return Err(Error::new(
                     ErrorKind::NotConnected,
                     "cannot create connection",
@@ -232,9 +232,9 @@ pub fn connect(url: &str, user: &str, password: &str) -> Result<Connection, Erro
         }
         let status = tibco_ems_sys::tibemsConnection_Start(connection_pointer);
         match status {
-            tibems_status::TIBEMS_OK => trace!("tibemsConnection_Start: {:?}", status),
+            tibems_status::TIBEMS_OK => trace!("tibemsConnection_Start: {status:?}"),
             _ => {
-                error!("tibemsConnection_Start: {:?}", status);
+                error!("tibemsConnection_Start: {status:?}");
                 return Err(Error::new(
                     ErrorKind::NotConnected,
                     "cannot start connection",
@@ -293,9 +293,9 @@ impl Connection {
                 tibco_ems_sys::tibemsAcknowledgeMode::TIBEMS_AUTO_ACKNOWLEDGE,
             );
             match status {
-                tibems_status::TIBEMS_OK => trace!("tibemsConnection_CreateSession: {:?}", status),
+                tibems_status::TIBEMS_OK => trace!("tibemsConnection_CreateSession: {status:?}"),
                 _ => {
-                    error!("tibemsConnection_CreateSession: {:?}", status);
+                    error!("tibemsConnection_CreateSession: {status:?}");
                     return Err(Error::new(ErrorKind::Other, "creating session failed"));
                 }
             }
@@ -304,9 +304,9 @@ impl Connection {
             let status =
                 tibco_ems_sys::tibemsSession_CreateProducer(session_pointer, &mut producer, dest);
             match status {
-                tibems_status::TIBEMS_OK => trace!("tibemsSession_CreateProducer: {:?}", status),
+                tibems_status::TIBEMS_OK => trace!("tibemsSession_CreateProducer: {status:?}"),
                 _ => {
-                    error!("tibemsSession_CreateProducer: {:?}", status);
+                    error!("tibemsSession_CreateProducer: {status:?}");
                     return Err(Error::new(ErrorKind::Other, "creating producer failed"));
                 }
             }
@@ -339,9 +339,9 @@ impl Connection {
                 tibco_ems_sys::tibemsAcknowledgeMode::TIBEMS_EXPLICIT_CLIENT_ACKNOWLEDGE,
             );
             match status {
-                tibems_status::TIBEMS_OK => trace!("tibemsConnection_CreateSession: {:?}", status),
+                tibems_status::TIBEMS_OK => trace!("tibemsConnection_CreateSession: {status:?}"),
                 _ => {
-                    error!("tibemsConnection_CreateSession: {:?}", status);
+                    error!("tibemsConnection_CreateSession: {status:?}");
                     return Err(Error::new(ErrorKind::Other, "creating session failed"));
                 }
             }
@@ -350,9 +350,9 @@ impl Connection {
             let status =
                 tibco_ems_sys::tibemsSession_CreateProducer(session_pointer, &mut producer, dest);
             match status {
-                tibems_status::TIBEMS_OK => trace!("tibemsSession_CreateProducer: {:?}", status),
+                tibems_status::TIBEMS_OK => trace!("tibemsSession_CreateProducer: {status:?}"),
                 _ => {
-                    error!("tibemsSession_CreateProducer: {:?}", status);
+                    error!("tibemsSession_CreateProducer: {status:?}");
                     return Err(Error::new(ErrorKind::Other, "creating producer failed"));
                 }
             }
@@ -384,9 +384,9 @@ impl Connection {
             let buf_ref: *const std::os::raw::c_char = buf_vec.as_ptr();
             let status = tibco_ems_sys::tibemsConnection_GetActiveURL(connection_pointer, &buf_ref);
             match status {
-                tibems_status::TIBEMS_OK => trace!("tibemsConnection_GetActiveURL: {:?}", status),
+                tibems_status::TIBEMS_OK => trace!("tibemsConnection_GetActiveURL: {status:?}"),
                 _ => {
-                    error!("tibemsConnection_GetActiveURL: {:?}", status);
+                    error!("tibemsConnection_GetActiveURL: {status:?}");
                     return Err(Error::new(
                         ErrorKind::Other,
                         "failed to retrieve active url",
@@ -447,17 +447,17 @@ impl Consumer {
                     );
                     match status {
                         tibems_status::TIBEMS_OK => {
-                            trace!("tibemsMsgConsumer_ReceiveTimeout: {:?}", status)
+                            trace!("tibemsMsgConsumer_ReceiveTimeout: {status:?}")
                         }
                         tibems_status::TIBEMS_TIMEOUT => {
                             return Ok(None);
                         }
                         _ => {
-                            let status_str = format!("{:?}", status);
-                            error!("tibemsMsgConsumer_ReceiveTimeout: {}", status_str);
+                            let status_str = format!("{status:?}");
+                            error!("tibemsMsgConsumer_ReceiveTimeout: {status_str}");
                             return Err(Error::new(
                                 ErrorKind::Other,
-                                format!("receive message failed: {}", status_str),
+                                format!("receive message failed: {status_str}"),
                             ));
                         }
                     }
@@ -467,14 +467,14 @@ impl Consumer {
                         tibco_ems_sys::tibemsMsgConsumer_Receive(self.pointer, &mut msg_pointer);
                     match status {
                         tibems_status::TIBEMS_OK => {
-                            trace!("tibemsMsgConsumer_Receive: {:?}", status)
+                            trace!("tibemsMsgConsumer_Receive: {status:?}")
                         }
                         _ => {
-                            let status_str = format!("{:?}", status);
-                            error!("tibemsMsgConsumer_Receive: {}", status_str);
+                            let status_str = format!("{status:?}");
+                            error!("tibemsMsgConsumer_Receive: {status_str}");
                             return Err(Error::new(
                                 ErrorKind::Other,
-                                format!("receive message failed: {}", status_str),
+                                format!("receive message failed: {status_str}"),
                             ));
                         }
                     }
@@ -501,8 +501,7 @@ impl Consumer {
                 _ => Err(Error::new(
                     ErrorKind::Other,
                     format!(
-                        "received message with unexpected type (expected: TextMessage, found: {}",
-                        msg
+                        "received message with unexpected type (expected: TextMessage, found: {msg}"
                     ),
                 )),
             },
@@ -526,8 +525,7 @@ impl Consumer {
                 _ => Err(Error::new(
                     ErrorKind::Other,
                     format!(
-                        "received message with unexpected type (expected: BytesMessage, found: {}",
-                        msg
+                        "received message with unexpected type (expected: BytesMessage, found: {msg}"
                     ),
                 )),
             },
@@ -551,8 +549,7 @@ impl Consumer {
                 _ => Err(Error::new(
                     ErrorKind::Other,
                     format!(
-                        "received message with unexpected type (expected: MapMessage, found: {}",
-                        msg
+                        "received message with unexpected type (expected: MapMessage, found: {msg}"
                     ),
                 )),
             },
@@ -576,8 +573,7 @@ impl Consumer {
                 _ => Err(Error::new(
                     ErrorKind::Other,
                     format!(
-                        "received message with unexpected type (expected: ObjectMessage, found: {}",
-                        msg
+                        "received message with unexpected type (expected: ObjectMessage, found: {msg}"
                     ),
                 )),
             },
@@ -725,14 +721,14 @@ impl Session {
                     );
                     match status {
                         tibems_status::TIBEMS_OK => {
-                            trace!("tibemsDestination_Create: {:?}", status)
+                            trace!("tibemsDestination_Create: {status:?}")
                         }
                         _ => {
-                            let status_str = format!("{:?}", status);
-                            error!("tibemsDestination_Create: {}", status_str);
+                            let status_str = format!("{status:?}");
+                            error!("tibemsDestination_Create: {status_str}");
                             return Err(Error::new(
                                 ErrorKind::Other,
-                                format!("create destination failed: {}", status_str),
+                                format!("create destination failed: {status_str}"),
                             ));
                         }
                     }
@@ -746,14 +742,14 @@ impl Session {
                     );
                     match status {
                         tibems_status::TIBEMS_OK => {
-                            trace!("tibemsDestination_Create: {:?}", status)
+                            trace!("tibemsDestination_Create: {status:?}")
                         }
                         _ => {
-                            let status_str = format!("{:?}", status);
-                            error!("tibemsDestination_Create: {}", status_str);
+                            let status_str = format!("{status:?}");
+                            error!("tibemsDestination_Create: {status_str}");
                             return Err(Error::new(
                                 ErrorKind::Other,
-                                format!("create destination failed: {}", status_str),
+                                format!("create destination failed: {status_str}"),
                             ));
                         }
                     }
@@ -773,13 +769,13 @@ impl Session {
                 tibco_ems_sys::tibems_bool::TIBEMS_TRUE,
             );
             match status {
-                tibems_status::TIBEMS_OK => trace!("tibemsSession_CreateConsumer: {:?}", status),
+                tibems_status::TIBEMS_OK => trace!("tibemsSession_CreateConsumer: {status:?}"),
                 _ => {
-                    let status_str = format!("{:?}", status);
-                    error!("tibemsSession_CreateConsumer: {}", status_str);
+                    let status_str = format!("{status:?}");
+                    error!("tibemsSession_CreateConsumer: {status_str}");
                     return Err(Error::new(
                         ErrorKind::Other,
-                        format!("create consumer failed: {}", status_str),
+                        format!("create consumer failed: {status_str}"),
                     ));
                 }
             }
@@ -824,14 +820,14 @@ impl Session {
                     );
                     match status {
                         tibems_status::TIBEMS_OK => {
-                            trace!("tibemsDestination_Create: {:?}", status)
+                            trace!("tibemsDestination_Create: {status:?}")
                         }
                         _ => {
-                            let status_str = format!("{:?}", status);
-                            error!("tibemsDestination_Create: {}", status_str);
+                            let status_str = format!("{status:?}");
+                            error!("tibemsDestination_Create: {status_str}");
                             return Err(Error::new(
                                 ErrorKind::Other,
-                                format!("create destination failed: {}", status_str),
+                                format!("create destination failed: {status_str}"),
                             ));
                         }
                     }
@@ -859,14 +855,14 @@ impl Session {
             );
             match status {
                 tibems_status::TIBEMS_OK => {
-                    trace!("tibemsSession_CreateSharedConsumer: {:?}", status)
+                    trace!("tibemsSession_CreateSharedConsumer: {status:?}")
                 }
                 _ => {
-                    let status_str = format!("{:?}", status);
-                    error!("tibemsSession_CreateSharedConsumer: {}", status_str);
+                    let status_str = format!("{status:?}");
+                    error!("tibemsSession_CreateSharedConsumer: {status_str}");
                     return Err(Error::new(
                         ErrorKind::Other,
-                        format!("create consumer failed: {}", status_str),
+                        format!("create consumer failed: {status_str}"),
                     ));
                 }
             }
@@ -910,14 +906,14 @@ impl Session {
                     );
                     match status {
                         tibems_status::TIBEMS_OK => {
-                            trace!("tibemsDestination_Create: {:?}", status)
+                            trace!("tibemsDestination_Create: {status:?}")
                         }
                         _ => {
-                            let status_str = format!("{:?}", status);
-                            error!("tibemsDestination_Create: {}", status_str);
+                            let status_str = format!("{status:?}");
+                            error!("tibemsDestination_Create: {status_str}");
                             return Err(Error::new(
                                 ErrorKind::Other,
-                                format!("create destination failed: {}", status_str),
+                                format!("create destination failed: {status_str}"),
                             ));
                         }
                     }
@@ -945,14 +941,14 @@ impl Session {
             );
             match status {
                 tibems_status::TIBEMS_OK => {
-                    trace!("tibemsSession_CreateSharedDurableConsumer: {:?}", status)
+                    trace!("tibemsSession_CreateSharedDurableConsumer: {status:?}")
                 }
                 _ => {
-                    let status_str = format!("{:?}", status);
-                    error!("tibemsSession_CreateSharedDurableConsumer: {}", status_str);
+                    let status_str = format!("{status:?}");
+                    error!("tibemsSession_CreateSharedDurableConsumer: {status_str}");
                     return Err(Error::new(
                         ErrorKind::Other,
-                        format!("create consumer failed: {}", status_str),
+                        format!("create consumer failed: {status_str}"),
                     ));
                 }
             }
@@ -982,14 +978,14 @@ impl Session {
             if self.producer_pointer != 0 {
                 let status = tibco_ems_sys::tibemsMsgProducer_Close(self.producer_pointer);
                 match status {
-                    tibems_status::TIBEMS_OK => trace!("tibemsMsgProducer_Close: {:?}", status),
-                    _ => error!("tibemsMsgProducer_Close: {:?}", status),
+                    tibems_status::TIBEMS_OK => trace!("tibemsMsgProducer_Close: {status:?}"),
+                    _ => error!("tibemsMsgProducer_Close: {status:?}"),
                 }
             }
             let status = tibco_ems_sys::tibemsSession_Close(self.pointer);
             match status {
-                tibems_status::TIBEMS_OK => trace!("tibemsSession_Close: {:?}", status),
-                _ => error!("tibemsSession_Close: {:?}", status),
+                tibems_status::TIBEMS_OK => trace!("tibemsSession_Close: {status:?}"),
+                _ => error!("tibemsSession_Close: {status:?}"),
             }
         }
     }
@@ -1084,14 +1080,14 @@ impl Session {
                     );
                     match status {
                         tibems_status::TIBEMS_OK => {
-                            trace!("tibemsDestination_Create: {:?}", status)
+                            trace!("tibemsDestination_Create: {status:?}")
                         }
                         _ => {
-                            let status_str = format!("{:?}", status);
-                            error!("tibemsDestination_Create: {}", status_str);
+                            let status_str = format!("{status:?}");
+                            error!("tibemsDestination_Create: {status_str}");
                             return Err(Error::new(
                                 ErrorKind::Other,
-                                format!("create destination failed: {}", status_str),
+                                format!("create destination failed: {status_str}"),
                             ));
                         }
                     }
@@ -1105,14 +1101,14 @@ impl Session {
                     );
                     match status {
                         tibems_status::TIBEMS_OK => {
-                            trace!("tibemsDestination_Create: {:?}", status)
+                            trace!("tibemsDestination_Create: {status:?}")
                         }
                         _ => {
-                            let status_str = format!("{:?}", status);
-                            error!("tibemsDestination_Create: {}", status_str);
+                            let status_str = format!("{status:?}");
+                            error!("tibemsDestination_Create: {status_str}");
                             return Err(Error::new(
                                 ErrorKind::Other,
-                                format!("create destination failed: {}", status_str),
+                                format!("create destination failed: {status_str}"),
                             ));
                         }
                     }
@@ -1126,14 +1122,14 @@ impl Session {
                 );
                 match status {
                     tibems_status::TIBEMS_OK => {
-                        trace!("tibemsSession_CreateProducer: {:?}", status)
+                        trace!("tibemsSession_CreateProducer: {status:?}")
                     }
                     _ => {
-                        let status_str = format!("{:?}", status);
-                        error!("tibemsSession_CreateProducer: {}", status_str);
+                        let status_str = format!("{status:?}");
+                        error!("tibemsSession_CreateProducer: {status_str}");
                         return Err(Error::new(
                             ErrorKind::Other,
-                            format!("create producer failed: {}", status_str),
+                            format!("create producer failed: {status_str}"),
                         ));
                     }
                 }
@@ -1145,13 +1141,13 @@ impl Session {
                 msg,
             );
             match status {
-                tibems_status::TIBEMS_OK => trace!("tibemsMsgProducer_Send: {:?}", status),
+                tibems_status::TIBEMS_OK => trace!("tibemsMsgProducer_Send: {status:?}"),
                 _ => {
-                    let status_str = format!("{:?}", status);
-                    error!("tibemsMsgProducer_Send: {}", status_str);
+                    let status_str = format!("{status:?}");
+                    error!("tibemsMsgProducer_Send: {status_str}");
                     return Err(Error::new(
                         ErrorKind::Other,
-                        format!("send message failed: {}", status_str),
+                        format!("send message failed: {status_str}"),
                     ));
                 }
             }
@@ -1159,21 +1155,21 @@ impl Session {
             if self.producer_pointer == 0 {
                 let status = tibco_ems_sys::tibemsMsgProducer_Close(local_producer);
                 match status {
-                    tibems_status::TIBEMS_OK => trace!("tibemsMsgProducer_Close: {:?}", status),
-                    _ => error!("tibemsMsgProducer_Close: {:?}", status),
+                    tibems_status::TIBEMS_OK => trace!("tibemsMsgProducer_Close: {status:?}"),
+                    _ => error!("tibemsMsgProducer_Close: {status:?}"),
                 }
             }
             //destroy message
             let status = tibco_ems_sys::tibemsMsg_Destroy(msg);
             match status {
-                tibems_status::TIBEMS_OK => trace!("tibemsMsg_Destroy: {:?}", status),
-                _ => error!("tibemsMsg_Destroy: {:?}", status),
+                tibems_status::TIBEMS_OK => trace!("tibemsMsg_Destroy: {status:?}"),
+                _ => error!("tibemsMsg_Destroy: {status:?}"),
             }
             //destroy destination
             let status = tibco_ems_sys::tibemsDestination_Destroy(dest);
             match status {
-                tibems_status::TIBEMS_OK => trace!("tibemsDestination_Destroy: {:?}", status),
-                _ => error!("tibemsDestination_Destroy: {:?}", status),
+                tibems_status::TIBEMS_OK => trace!("tibemsDestination_Destroy: {status:?}"),
+                _ => error!("tibemsDestination_Destroy: {status:?}"),
             }
         }
         #[cfg(feature = "tracing")]
@@ -1216,9 +1212,9 @@ impl Session {
                     );
                     match status {
                         tibems_status::TIBEMS_OK => {
-                            trace!("tibemsSession_CreateTemporaryQueue: {:?}", status)
+                            trace!("tibemsSession_CreateTemporaryQueue: {status:?}")
                         }
-                        _ => error!("tibemsSession_CreateTemporaryQueue: {:?}", status),
+                        _ => error!("tibemsSession_CreateTemporaryQueue: {status:?}"),
                     }
                     let c_destination = CString::new(name.clone()).unwrap();
                     let status = tibco_ems_sys::tibemsDestination_Create(
@@ -1228,9 +1224,9 @@ impl Session {
                     );
                     match status {
                         tibems_status::TIBEMS_OK => {
-                            trace!("tibemsDestination_Create: {:?}", status)
+                            trace!("tibemsDestination_Create: {status:?}")
                         }
-                        _ => error!("tibemsDestination_Create: {:?}", status),
+                        _ => error!("tibemsDestination_Create: {status:?}"),
                     }
                 }
                 Destination::Topic(name) => {
@@ -1240,9 +1236,9 @@ impl Session {
                     );
                     match status {
                         tibems_status::TIBEMS_OK => {
-                            trace!("tibemsSession_CreateTemporaryTopic: {:?}", status)
+                            trace!("tibemsSession_CreateTemporaryTopic: {status:?}")
                         }
-                        _ => error!("tibemsSession_CreateTemporaryTopic: {:?}", status),
+                        _ => error!("tibemsSession_CreateTemporaryTopic: {status:?}"),
                     }
                     let c_destination = CString::new(name.clone()).unwrap();
                     let status = tibco_ems_sys::tibemsDestination_Create(
@@ -1252,9 +1248,9 @@ impl Session {
                     );
                     match status {
                         tibems_status::TIBEMS_OK => {
-                            trace!("tibemsDestination_Create: {:?}", status)
+                            trace!("tibemsDestination_Create: {status:?}")
                         }
-                        _ => error!("tibemsDestination_Create: {:?}", status),
+                        _ => error!("tibemsDestination_Create: {status:?}"),
                     }
                 }
             }
@@ -1262,38 +1258,38 @@ impl Session {
             let status =
                 tibco_ems_sys::tibemsSession_CreateProducer(self.pointer, &mut producer, dest);
             match status {
-                tibems_status::TIBEMS_OK => trace!("tibemsSession_CreateProducer: {:?}", status),
-                _ => error!("tibemsSession_CreateProducer: {:?}", status),
+                tibems_status::TIBEMS_OK => trace!("tibemsSession_CreateProducer: {status:?}"),
+                _ => error!("tibemsSession_CreateProducer: {status:?}"),
             }
             let msg = build_message_pointer_from_message(&message);
             //set reply to
             let status = tibco_ems_sys::tibemsMsg_SetReplyTo(msg, reply_dest);
             match status {
-                tibems_status::TIBEMS_OK => trace!("tibemsMsg_SetReplyTo: {:?}", status),
-                _ => error!("tibemsMsg_SetReplyTo: {:?}", status),
+                tibems_status::TIBEMS_OK => trace!("tibemsMsg_SetReplyTo: {status:?}"),
+                _ => error!("tibemsMsg_SetReplyTo: {status:?}"),
             }
             let status = tibco_ems_sys::tibemsMsgProducer_Send(producer, msg);
             match status {
-                tibems_status::TIBEMS_OK => trace!("tibemsMsgProducer_Send: {:?}", status),
-                _ => error!("tibemsMsgProducer_Send: {:?}", status),
+                tibems_status::TIBEMS_OK => trace!("tibemsMsgProducer_Send: {status:?}"),
+                _ => error!("tibemsMsgProducer_Send: {status:?}"),
             }
             //destroy message
             let status = tibco_ems_sys::tibemsMsg_Destroy(msg);
             match status {
-                tibems_status::TIBEMS_OK => trace!("tibemsMsg_Destroy: {:?}", status),
-                _ => error!("tibemsMsg_Destroy: {:?}", status),
+                tibems_status::TIBEMS_OK => trace!("tibemsMsg_Destroy: {status:?}"),
+                _ => error!("tibemsMsg_Destroy: {status:?}"),
             }
             //destroy producer
             let status = tibco_ems_sys::tibemsMsgProducer_Close(producer);
             match status {
-                tibems_status::TIBEMS_OK => trace!("tibemsMsgProducer_Close: {:?}", status),
-                _ => error!("tibemsMsgProducer_Close: {:?}", status),
+                tibems_status::TIBEMS_OK => trace!("tibemsMsgProducer_Close: {status:?}"),
+                _ => error!("tibemsMsgProducer_Close: {status:?}"),
             }
             //destroy destination
             let status = tibco_ems_sys::tibemsDestination_Destroy(dest);
             match status {
-                tibems_status::TIBEMS_OK => trace!("tibemsDestination_Destroy: {:?}", status),
-                _ => error!("tibemsDestination_Destroy: {:?}", status),
+                tibems_status::TIBEMS_OK => trace!("tibemsDestination_Destroy: {status:?}"),
+                _ => error!("tibemsDestination_Destroy: {status:?}"),
             }
             //open consumer
             let mut consumer_pointer: usize = 0;
@@ -1305,8 +1301,8 @@ impl Session {
                 tibco_ems_sys::tibems_bool::TIBEMS_TRUE,
             );
             match status {
-                tibems_status::TIBEMS_OK => trace!("tibemsSession_CreateConsumer: {:?}", status),
-                _ => error!("tibemsSession_CreateConsumer: {:?}", status),
+                tibems_status::TIBEMS_OK => trace!("tibemsSession_CreateConsumer: {status:?}"),
+                _ => error!("tibemsSession_CreateConsumer: {status:?}"),
             }
             let mut reply_message: usize = 0;
             let status = tibco_ems_sys::tibemsMsgConsumer_ReceiveTimeout(
@@ -1316,19 +1312,19 @@ impl Session {
             );
             match status {
                 tibems_status::TIBEMS_OK => {
-                    trace!("tibemsMsgConsumer_ReceiveTimeout: {:?}", status)
+                    trace!("tibemsMsgConsumer_ReceiveTimeout: {status:?}")
                 }
                 tibems_status::TIBEMS_TIMEOUT => {
                     return Ok(None);
                 }
-                _ => error!("tibemsMsgConsumer_ReceiveTimeout: {:?}", status),
+                _ => error!("tibemsMsgConsumer_ReceiveTimeout: {status:?}"),
             }
             let result = build_message_from_pointer(reply_message);
             //close consumer
             let status = tibco_ems_sys::tibemsMsgConsumer_Close(consumer_pointer);
             match status {
-                tibems_status::TIBEMS_OK => trace!("tibemsMsgConsumer_Close: {:?}", status),
-                _ => error!("tibemsMsgConsumer_Close: {:?}", status),
+                tibems_status::TIBEMS_OK => trace!("tibemsMsgConsumer_Close: {status:?}"),
+                _ => error!("tibemsMsgConsumer_Close: {status:?}"),
             }
             //destroy temporary destination
             match &destination {
@@ -1338,9 +1334,9 @@ impl Session {
                         tibco_ems_sys::tibemsSession_DeleteTemporaryQueue(self.pointer, reply_dest);
                     match status {
                         tibems_status::TIBEMS_OK => {
-                            trace!("tibemsSession_DeleteTemporaryQueue: {:?}", status)
+                            trace!("tibemsSession_DeleteTemporaryQueue: {status:?}")
                         }
-                        _ => error!("tibemsSession_DeleteTemporaryQueue: {:?}", status),
+                        _ => error!("tibemsSession_DeleteTemporaryQueue: {status:?}"),
                     }
                 }
                 Destination::Topic { .. } => {
@@ -1349,9 +1345,9 @@ impl Session {
                         tibco_ems_sys::tibemsSession_DeleteTemporaryTopic(self.pointer, reply_dest);
                     match status {
                         tibems_status::TIBEMS_OK => {
-                            trace!("tibemsSession_DeleteTemporaryTopic: {:?}", status)
+                            trace!("tibemsSession_DeleteTemporaryTopic: {status:?}")
                         }
-                        _ => error!("tibemsSession_DeleteTemporaryTopic: {:?}", status),
+                        _ => error!("tibemsSession_DeleteTemporaryTopic: {status:?}"),
                     }
                 }
             }
@@ -1452,8 +1448,8 @@ impl Message {
         let destroy_msg = |pointer: usize| unsafe {
             let status = tibco_ems_sys::tibemsMsg_Destroy(pointer);
             match status {
-                tibems_status::TIBEMS_OK => trace!("tibemsMsg_Destroy: {:?}", status),
-                _ => error!("tibemsMsg_Destroy: {:?}", status),
+                tibems_status::TIBEMS_OK => trace!("tibemsMsg_Destroy: {status:?}"),
+                _ => error!("tibemsMsg_Destroy: {status:?}"),
             }
         };
         match self {
@@ -1489,8 +1485,8 @@ impl Message {
         let ack_msg = |pointer: usize| unsafe {
             let status = tibco_ems_sys::tibemsMsg_Acknowledge(pointer);
             match status {
-                tibems_status::TIBEMS_OK => trace!("tibemsMsg_Acknowledge: {:?}", status),
-                _ => error!("tibemsMsg_Acknowledge: {:?}", status),
+                tibems_status::TIBEMS_OK => trace!("tibemsMsg_Acknowledge: {status:?}"),
+                _ => error!("tibemsMsg_Acknowledge: {status:?}"),
             }
         };
         match self {
@@ -1526,8 +1522,8 @@ impl Message {
         let recover = |pointer: usize| unsafe {
             let status = tibco_ems_sys::tibemsMsg_Recover(pointer);
             match status {
-                tibems_status::TIBEMS_OK => trace!("tibemsMsg_Recover: {:?}", status),
-                _ => error!("tibemsMsg_Recover: {:?}", status),
+                tibems_status::TIBEMS_OK => trace!("tibemsMsg_Recover: {status:?}"),
+                _ => error!("tibemsMsg_Recover: {status:?}"),
             }
         };
         match self {
@@ -1573,21 +1569,21 @@ fn build_message_pointer_from_message(message: &Message) -> usize {
             Message::TextMessage(msg) => {
                 let status = tibco_ems_sys::tibemsTextMsg_Create(&mut msg_pointer);
                 match status {
-                    tibems_status::TIBEMS_OK => trace!("tibemsTextMsg_Create: {:?}", status),
-                    _ => error!("tibemsTextMsg_Create: {:?}", status),
+                    tibems_status::TIBEMS_OK => trace!("tibemsTextMsg_Create: {status:?}"),
+                    _ => error!("tibemsTextMsg_Create: {status:?}"),
                 }
                 let c_text = CString::new(msg.body.clone()).unwrap();
                 let status = tibco_ems_sys::tibemsTextMsg_SetText(msg_pointer, c_text.as_ptr());
                 match status {
-                    tibems_status::TIBEMS_OK => trace!("tibemsTextMsg_SetText: {:?}", status),
-                    _ => error!("tibemsTextMsg_SetText: {:?}", status),
+                    tibems_status::TIBEMS_OK => trace!("tibemsTextMsg_SetText: {status:?}"),
+                    _ => error!("tibemsTextMsg_SetText: {status:?}"),
                 }
             }
             Message::BytesMessage(msg) => {
                 let status = tibco_ems_sys::tibemsBytesMsg_Create(&mut msg_pointer);
                 match status {
-                    tibems_status::TIBEMS_OK => trace!("tibemsBytesMsg_Create: {:?}", status),
-                    _ => error!("tibemsBytesMsg_Create: {:?}", status),
+                    tibems_status::TIBEMS_OK => trace!("tibemsBytesMsg_Create: {status:?}"),
+                    _ => error!("tibemsBytesMsg_Create: {status:?}"),
                 }
                 let content = msg.body.clone();
                 let body_size = content.len();
@@ -1599,16 +1595,16 @@ fn build_message_pointer_from_message(message: &Message) -> usize {
                         body_size as u32,
                     );
                     match status {
-                        tibems_status::TIBEMS_OK => trace!("tibemsBytesMsg_SetBytes: {:?}", status),
-                        _ => error!("tibemsBytesMsg_SetBytes: {:?}", status),
+                        tibems_status::TIBEMS_OK => trace!("tibemsBytesMsg_SetBytes: {status:?}"),
+                        _ => error!("tibemsBytesMsg_SetBytes: {status:?}"),
                     }
                 }
             }
             Message::ObjectMessage(msg) => {
                 let status = tibco_ems_sys::tibemsObjectMsg_Create(&mut msg_pointer);
                 match status {
-                    tibems_status::TIBEMS_OK => trace!("tibemsObjectMsg_Create: {:?}", status),
-                    _ => error!("tibemsObjectMsg_Create: {:?}", status),
+                    tibems_status::TIBEMS_OK => trace!("tibemsObjectMsg_Create: {status:?}"),
+                    _ => error!("tibemsObjectMsg_Create: {status:?}"),
                 }
                 let content = msg.body.clone();
                 let body_size = content.len();
@@ -1620,16 +1616,16 @@ fn build_message_pointer_from_message(message: &Message) -> usize {
                 );
                 match status {
                     tibems_status::TIBEMS_OK => {
-                        trace!("tibemsObjectMsg_SetObjectBytes: {:?}", status)
+                        trace!("tibemsObjectMsg_SetObjectBytes: {status:?}")
                     }
-                    _ => error!("tibemsObjectMsg_SetObjectBytes: {:?}", status),
+                    _ => error!("tibemsObjectMsg_SetObjectBytes: {status:?}"),
                 }
             }
             Message::MapMessage(msg) => {
                 let status = tibco_ems_sys::tibemsMapMsg_Create(&mut msg_pointer);
                 match status {
-                    tibems_status::TIBEMS_OK => trace!("tibemsMapMsg_Create: {:?}", status),
-                    _ => error!("tibemsMapMsg_Create: {:?}", status),
+                    tibems_status::TIBEMS_OK => trace!("tibemsMapMsg_Create: {status:?}"),
+                    _ => error!("tibemsMapMsg_Create: {status:?}"),
                 }
                 for (key, val) in msg.body.clone() {
                     let c_name = CString::new(key).unwrap();
@@ -1650,9 +1646,9 @@ fn build_message_pointer_from_message(message: &Message) -> usize {
                             };
                             match status {
                                 tibems_status::TIBEMS_OK => {
-                                    trace!("tibemsMapMsg_SetBoolean: {:?}", status)
+                                    trace!("tibemsMapMsg_SetBoolean: {status:?}")
                                 }
-                                _ => error!("tibemsMapMsg_SetBoolean: {:?}", status),
+                                _ => error!("tibemsMapMsg_SetBoolean: {status:?}"),
                             }
                         }
                         TypedValue::String(value) => {
@@ -1664,9 +1660,9 @@ fn build_message_pointer_from_message(message: &Message) -> usize {
                             );
                             match status {
                                 tibems_status::TIBEMS_OK => {
-                                    trace!("tibemsMapMsg_SetString: {:?}", status)
+                                    trace!("tibemsMapMsg_SetString: {status:?}")
                                 }
-                                _ => error!("tibemsMapMsg_SetString: {:?}", status),
+                                _ => error!("tibemsMapMsg_SetString: {status:?}"),
                             }
                         }
                         TypedValue::Integer(value) => {
@@ -1677,9 +1673,9 @@ fn build_message_pointer_from_message(message: &Message) -> usize {
                             );
                             match status {
                                 tibems_status::TIBEMS_OK => {
-                                    trace!("tibemsMapMsg_SetInt: {:?}", status)
+                                    trace!("tibemsMapMsg_SetInt: {status:?}")
                                 }
-                                _ => error!("tibemsMapMsg_SetInt: {:?}", status),
+                                _ => error!("tibemsMapMsg_SetInt: {status:?}"),
                             }
                         }
                         TypedValue::Long(value) => {
@@ -1690,9 +1686,9 @@ fn build_message_pointer_from_message(message: &Message) -> usize {
                             );
                             match status {
                                 tibems_status::TIBEMS_OK => {
-                                    trace!("tibemsMapMsg_SetLong: {:?}", status)
+                                    trace!("tibemsMapMsg_SetLong: {status:?}")
                                 }
-                                _ => error!("tibemsMapMsg_SetLong: {:?}", status),
+                                _ => error!("tibemsMapMsg_SetLong: {status:?}"),
                             }
                         }
                         TypedValue::Float(value) => {
@@ -1703,9 +1699,9 @@ fn build_message_pointer_from_message(message: &Message) -> usize {
                             );
                             match status {
                                 tibems_status::TIBEMS_OK => {
-                                    trace!("tibemsMapMsg_SetFloat: {:?}", status)
+                                    trace!("tibemsMapMsg_SetFloat: {status:?}")
                                 }
-                                _ => error!("tibemsMapMsg_SetFloat: {:?}", status),
+                                _ => error!("tibemsMapMsg_SetFloat: {status:?}"),
                             }
                         }
 
@@ -1717,9 +1713,9 @@ fn build_message_pointer_from_message(message: &Message) -> usize {
                             );
                             match status {
                                 tibems_status::TIBEMS_OK => {
-                                    trace!("tibemsMapMsg_SetDouble: {:?}", status)
+                                    trace!("tibemsMapMsg_SetDouble: {status:?}")
                                 }
-                                _ => error!("tibemsMapMsg_SetDouble: {:?}", status),
+                                _ => error!("tibemsMapMsg_SetDouble: {status:?}"),
                             }
                         }
                         TypedValue::Binary(_value) => {
@@ -1731,7 +1727,7 @@ fn build_message_pointer_from_message(message: &Message) -> usize {
                             // }
                         }
                         _ => {
-                            panic!("missing map message type implementation for {:?}", val);
+                            panic!("missing map message type implementation for {val:?}");
                         }
                     }
                 }
@@ -1755,8 +1751,8 @@ fn build_message_pointer_from_message(message: &Message) -> usize {
                     c_correlation_id.as_ptr(),
                 );
                 match status {
-                    tibems_status::TIBEMS_OK => trace!("tibemsMsg_SetCorrelationId: {:?}", status),
-                    _ => error!("tibemsMsg_SetCorrelationId: {:?}", status),
+                    tibems_status::TIBEMS_OK => trace!("tibemsMsg_SetCorrelationId: {status:?}"),
+                    _ => error!("tibemsMsg_SetCorrelationId: {status:?}"),
                 }
             }
             //look for jms type
@@ -1766,8 +1762,8 @@ fn build_message_pointer_from_message(message: &Message) -> usize {
                 let c_jms_type = CString::new(jms_type_val.as_str()).unwrap();
                 let status = tibco_ems_sys::tibemsMsg_SetType(msg_pointer, c_jms_type.as_ptr());
                 match status {
-                    tibems_status::TIBEMS_OK => trace!("tibemsMsg_SetType: {:?}", status),
-                    _ => error!("tibemsMsg_SetType: {:?}", status),
+                    tibems_status::TIBEMS_OK => trace!("tibemsMsg_SetType: {status:?}"),
+                    _ => error!("tibemsMsg_SetType: {status:?}"),
                 }
             }
             //do other headers (also do correlation id again as custom header)
@@ -1783,9 +1779,9 @@ fn build_message_pointer_from_message(message: &Message) -> usize {
                         );
                         match status {
                             tibems_status::TIBEMS_OK => {
-                                trace!("tibemsMsg_SetStringProperty: {:?}", status)
+                                trace!("tibemsMsg_SetStringProperty: {status:?}")
                             }
-                            _ => error!("tibemsMsg_SetStringProperty: {:?}", status),
+                            _ => error!("tibemsMsg_SetStringProperty: {status:?}"),
                         }
                     }
                     TypedValue::Boolean(value) => {
@@ -1804,9 +1800,9 @@ fn build_message_pointer_from_message(message: &Message) -> usize {
                         };
                         match status {
                             tibems_status::TIBEMS_OK => {
-                                trace!("tibemsMsg_SetBooleanProperty: {:?}", status)
+                                trace!("tibemsMsg_SetBooleanProperty: {status:?}")
                             }
-                            _ => error!("tibemsMsg_SetBooleanProperty: {:?}", status),
+                            _ => error!("tibemsMsg_SetBooleanProperty: {status:?}"),
                         }
                     }
                     TypedValue::Integer(value) => {
@@ -1817,9 +1813,9 @@ fn build_message_pointer_from_message(message: &Message) -> usize {
                         );
                         match status {
                             tibems_status::TIBEMS_OK => {
-                                trace!("tibemsMsg_SetIntProperty: {:?}", status)
+                                trace!("tibemsMsg_SetIntProperty: {status:?}")
                             }
-                            _ => error!("tibemsMsg_SetIntProperty: {:?}", status),
+                            _ => error!("tibemsMsg_SetIntProperty: {status:?}"),
                         }
                     }
                     TypedValue::Long(value) => {
@@ -1830,13 +1826,13 @@ fn build_message_pointer_from_message(message: &Message) -> usize {
                         );
                         match status {
                             tibems_status::TIBEMS_OK => {
-                                trace!("tibemsMsg_SetLongProperty: {:?}", status)
+                                trace!("tibemsMsg_SetLongProperty: {status:?}")
                             }
-                            _ => error!("tibemsMsg_SetLongProperty: {:?}", status),
+                            _ => error!("tibemsMsg_SetLongProperty: {status:?}"),
                         }
                     }
                     _ => {
-                        panic!("missing property type implementation for {:?}", val);
+                        panic!("missing property type implementation for {val:?}");
                     }
                 }
             }
@@ -1853,8 +1849,8 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
         let mut msg_type: tibemsMsgType = tibemsMsgType::TIBEMS_TEXT_MESSAGE;
         let status = tibco_ems_sys::tibemsMsg_GetBodyType(msg_pointer, &mut msg_type);
         match status {
-            tibems_status::TIBEMS_OK => trace!("tibemsMsg_GetBodyType: {:?}", status),
-            _ => error!("tibemsMsg_GetBodyType: {:?}", status),
+            tibems_status::TIBEMS_OK => trace!("tibemsMsg_GetBodyType: {status:?}"),
+            _ => error!("tibemsMsg_GetBodyType: {status:?}"),
         }
         match msg_type {
             tibemsMsgType::TIBEMS_TEXT_MESSAGE => {
@@ -1862,14 +1858,14 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
                 let buf_ref: *const std::os::raw::c_char = buf_vec.as_ptr();
                 let status = tibco_ems_sys::tibemsTextMsg_GetText(msg_pointer, &buf_ref);
                 match status {
-                    tibems_status::TIBEMS_OK => trace!("tibemsTextMsg_GetText: {:?}", status),
-                    _ => error!("tibemsTextMsg_GetText: {:?}", status),
+                    tibems_status::TIBEMS_OK => trace!("tibemsTextMsg_GetText: {status:?}"),
+                    _ => error!("tibemsTextMsg_GetText: {status:?}"),
                 }
                 let content = CStr::from_ptr(buf_ref).to_str().unwrap();
                 let status = tibco_ems_sys::tibemsMsg_GetMessageID(msg_pointer, &buf_ref);
                 match status {
-                    tibems_status::TIBEMS_OK => trace!("tibemsMsg_GetMessageID: {:?}", status),
-                    _ => error!("tibemsMsg_GetMessageID: {:?}", status),
+                    tibems_status::TIBEMS_OK => trace!("tibemsMsg_GetMessageID: {status:?}"),
+                    _ => error!("tibemsMsg_GetMessageID: {status:?}"),
                 }
                 let message_id = CStr::from_ptr(buf_ref).to_str().unwrap();
                 header.insert(
@@ -1889,8 +1885,8 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
                 let buf_ref: *const std::os::raw::c_char = buf_vec.as_ptr();
                 let status = tibco_ems_sys::tibemsMsg_GetMessageID(msg_pointer, &buf_ref);
                 match status {
-                    tibems_status::TIBEMS_OK => trace!("tibemsMsg_GetMessageID: {:?}", status),
-                    _ => error!("tibemsMsg_GetMessageID: {:?}", status),
+                    tibems_status::TIBEMS_OK => trace!("tibemsMsg_GetMessageID: {status:?}"),
+                    _ => error!("tibemsMsg_GetMessageID: {status:?}"),
                 }
                 //admin messages do not have a message id
                 if !buf_vec.is_empty() {
@@ -1905,8 +1901,8 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
                 let status =
                     tibco_ems_sys::tibemsMapMsg_GetMapNames(msg_pointer, &mut names_pointer);
                 match status {
-                    tibems_status::TIBEMS_OK => trace!("tibemsMapMsg_GetMapNames: {:?}", status),
-                    _ => error!("tibemsMapMsg_GetMapNames: {:?}", status),
+                    tibems_status::TIBEMS_OK => trace!("tibemsMapMsg_GetMapNames: {status:?}"),
+                    _ => error!("tibemsMapMsg_GetMapNames: {status:?}"),
                 }
                 let mut body_entries: HashMap<String, TypedValue> = HashMap::new();
                 loop {
@@ -1927,7 +1923,7 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
                             );
                             match status {
                                 tibems_status::TIBEMS_OK => {
-                                    trace!("tibemsMapMsg_GetString: {:?}", status);
+                                    trace!("tibemsMapMsg_GetString: {status:?}");
                                     if !val_buf_ref.is_null() {
                                         let header_value =
                                             CStr::from_ptr(val_buf_ref).to_str().unwrap();
@@ -1953,7 +1949,7 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
                                             );
                                         }
                                         tibems_status::TIBEMS_OK => {
-                                            trace!("tibemsMapMsg_GetMapMsg: {:?}", status);
+                                            trace!("tibemsMapMsg_GetMapMsg: {status:?}");
                                             let mut raw_message = build_message_from_pointer(msg2);
                                             match &mut raw_message {
                                                 Message::TextMessage(_msg) => {}
@@ -1968,25 +1964,25 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
                                                 }
                                             }
                                         }
-                                        _ => error!("tibemsMapMsg_GetMapMsg: {:?}", status),
+                                        _ => error!("tibemsMapMsg_GetMapMsg: {status:?}"),
                                     }
                                 }
-                                _ => error!("tibemsMapMsg_GetString: {:?}", status),
+                                _ => error!("tibemsMapMsg_GetString: {status:?}"),
                             }
                         }
                         tibems_status::TIBEMS_NOT_FOUND => {
                             break;
                         }
                         _ => {
-                            println!("tibemsMsgEnum_GetNextName: {:?}", status);
+                            println!("tibemsMsgEnum_GetNextName: {status:?}");
                             break;
                         }
                     }
                 }
                 let status = tibco_ems_sys::tibemsMsgEnum_Destroy(names_pointer);
                 match status {
-                    tibems_status::TIBEMS_OK => trace!("tibemsMsgEnum_Destroy: {:?}", status),
-                    _ => error!("tibemsMsgEnum_Destroy: {:?}", status),
+                    tibems_status::TIBEMS_OK => trace!("tibemsMsgEnum_Destroy: {status:?}"),
+                    _ => error!("tibemsMsgEnum_Destroy: {status:?}"),
                 }
                 msg = Message::MapMessage(MapMessage {
                     body: body_entries,
@@ -2001,8 +1997,8 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
                 let buf_ref: *const std::os::raw::c_char = buf_vec.as_ptr();
                 let status = tibco_ems_sys::tibemsMsg_GetMessageID(msg_pointer, &buf_ref);
                 match status {
-                    tibems_status::TIBEMS_OK => trace!("tibemsMsg_GetMessageID: {:?}", status),
-                    _ => error!("tibemsMsg_GetMessageID: {:?}", status),
+                    tibems_status::TIBEMS_OK => trace!("tibemsMsg_GetMessageID: {status:?}"),
+                    _ => error!("tibemsMsg_GetMessageID: {status:?}"),
                 }
                 let message_id = CStr::from_ptr(buf_ref).to_str().unwrap();
                 header.insert(
@@ -2016,7 +2012,7 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
                     tibco_ems_sys::tibemsBytesMsg_GetBodyLength(msg_pointer, &mut body_length);
                 match status {
                     tibems_status::TIBEMS_OK => {
-                        trace!("tibemsBytesMsg_GetBodyLength: {:?}", status);
+                        trace!("tibemsBytesMsg_GetBodyLength: {status:?}");
                         if body_length > 0 {
                             //extract body
                             let buf_vec: Vec<u8> = vec![0; 0];
@@ -2029,15 +2025,15 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
                             );
                             match status {
                                 tibems_status::TIBEMS_OK => {
-                                    trace!("tibemsBytesMsg_GetBytes: {:?}", status)
+                                    trace!("tibemsBytesMsg_GetBytes: {status:?}")
                                 }
-                                _ => error!("tibemsBytesMsg_GetBytes: {:?}", status),
+                                _ => error!("tibemsBytesMsg_GetBytes: {status:?}"),
                             }
                             let slice = core::slice::from_raw_parts(buf_ref, result_size as usize);
                             body_value = slice.to_vec();
                         }
                     }
-                    _ => error!("tibemsBytesMsg_GetBodyLength: {:?}", status),
+                    _ => error!("tibemsBytesMsg_GetBodyLength: {status:?}"),
                 }
                 msg = Message::BytesMessage(BytesMessage {
                     body: body_value,
@@ -2052,8 +2048,8 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
                 let buf_ref: *const std::os::raw::c_char = buf_vec.as_ptr();
                 let status = tibco_ems_sys::tibemsMsg_GetMessageID(msg_pointer, &buf_ref);
                 match status {
-                    tibems_status::TIBEMS_OK => trace!("tibemsMsg_GetMessageID: {:?}", status),
-                    _ => error!("tibemsMsg_GetMessageID: {:?}", status),
+                    tibems_status::TIBEMS_OK => trace!("tibemsMsg_GetMessageID: {status:?}"),
+                    _ => error!("tibemsMsg_GetMessageID: {status:?}"),
                 }
                 let message_id = CStr::from_ptr(buf_ref).to_str().unwrap();
                 header.insert(
@@ -2071,9 +2067,9 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
                 );
                 match status {
                     tibems_status::TIBEMS_OK => {
-                        trace!("tibemsObjectMsg_GetObjectBytes: {:?}", status)
+                        trace!("tibemsObjectMsg_GetObjectBytes: {status:?}")
                     }
-                    _ => error!("tibemsObjectMsg_GetObjectBytes: {:?}", status),
+                    _ => error!("tibemsObjectMsg_GetObjectBytes: {status:?}"),
                 }
                 let slice = core::slice::from_raw_parts(buf_ref, result_size as usize);
                 msg = Message::ObjectMessage(ObjectMessage {
@@ -2086,7 +2082,7 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
             }
             _ => {
                 //unknown
-                panic!("BodyType {:?} not implemented", msg_type);
+                panic!("BodyType {msg_type:?} not implemented");
             }
         }
         //add correlation id to header
@@ -2095,7 +2091,7 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
         let status = tibco_ems_sys::tibemsMsg_GetCorrelationID(msg_pointer, &buf_ref);
         match status {
             tibems_status::TIBEMS_OK => {
-                trace!("tibemsMsg_GetCorrelationID: {:?}", status);
+                trace!("tibemsMsg_GetCorrelationID: {status:?}");
                 // check for null pointer (when no correlation id was set)
                 if !buf_ref.is_null() {
                     let correlation_id = CStr::from_ptr(buf_ref).to_str().unwrap();
@@ -2105,15 +2101,15 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
                     );
                 }
             }
-            _ => trace!("tibemsMsg_GetCorrelationID: {:?}", status),
+            _ => trace!("tibemsMsg_GetCorrelationID: {status:?}"),
         }
         // fetch header
         let mut header_enumeration: usize = 0;
         let status =
             tibco_ems_sys::tibemsMsg_GetPropertyNames(msg_pointer, &mut header_enumeration);
         match status {
-            tibems_status::TIBEMS_OK => trace!("tibemsMsg_GetPropertyNames: {:?}", status),
-            _ => error!("tibemsMsg_GetPropertyNames: {:?}", status),
+            tibems_status::TIBEMS_OK => trace!("tibemsMsg_GetPropertyNames: {status:?}"),
+            _ => error!("tibemsMsg_GetPropertyNames: {status:?}"),
         }
         loop {
             let buf_vec: Vec<i8> = vec![0; 0];
@@ -2134,14 +2130,14 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
                         );
                         match status {
                             tibems_status::TIBEMS_OK => {
-                                trace!("tibemsMsg_GetBooleanProperty: {:?}", status);
+                                trace!("tibemsMsg_GetBooleanProperty: {status:?}");
                                 let value = match bool_result {
                                     tibems_bool::TIBEMS_TRUE => true,
                                     tibems_bool::TIBEMS_FALSE => false,
                                 };
                                 header.insert(header_name.to_string(), TypedValue::Boolean(value));
                             }
-                            _ => error!("tibemsMsg_GetBooleanProperty: {:?}", status),
+                            _ => error!("tibemsMsg_GetBooleanProperty: {status:?}"),
                         }
                     } else {
                         let status = tibco_ems_sys::tibemsMsg_GetStringProperty(
@@ -2151,9 +2147,9 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
                         );
                         match status {
                             tibems_status::TIBEMS_OK => {
-                                trace!("tibemsMsg_GetStringProperty: {:?}", status)
+                                trace!("tibemsMsg_GetStringProperty: {status:?}")
                             }
-                            _ => error!("tibemsMsg_GetStringProperty: {:?}", status),
+                            _ => error!("tibemsMsg_GetStringProperty: {status:?}"),
                         }
                         let header_value = CStr::from_ptr(val_buf_ref).to_str().unwrap();
                         header.insert(
@@ -2166,15 +2162,15 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
                     break;
                 }
                 _ => {
-                    println!("tibemsMsgEnum_GetNextName: {:?}", status);
+                    println!("tibemsMsgEnum_GetNextName: {status:?}");
                     break;
                 }
             }
         }
         let status = tibco_ems_sys::tibemsMsgEnum_Destroy(header_enumeration);
         match status {
-            tibems_status::TIBEMS_OK => trace!("tibemsMsgEnum_Destroy: {:?}", status),
-            _ => error!("tibemsMsgEnum_Destroy: {:?}", status),
+            tibems_status::TIBEMS_OK => trace!("tibemsMsgEnum_Destroy: {status:?}"),
+            _ => error!("tibemsMsgEnum_Destroy: {status:?}"),
         }
         //add JMSType to header
         let val_buf_vec: Vec<i8> = vec![0; 0];
@@ -2182,7 +2178,7 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
         let status = tibco_ems_sys::tibemsMsg_GetType(msg_pointer, &val_buf_ref);
         match status {
             tibems_status::TIBEMS_OK => {
-                trace!("tibemsMsg_GetType: {:?}", status);
+                trace!("tibemsMsg_GetType: {status:?}");
                 // check for null pointer (when no correlation id was set)
                 if !val_buf_ref.is_null() {
                     let header_value = CStr::from_ptr(val_buf_ref).to_str().unwrap();
@@ -2194,7 +2190,7 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
                     }
                 }
             }
-            _ => error!("tibemsMsg_GetType: {:?}", status),
+            _ => error!("tibemsMsg_GetType: {status:?}"),
         }
         //add header to message
         match &mut msg {
@@ -2207,8 +2203,8 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
         let mut jms_destination: usize = 0;
         let status = tibco_ems_sys::tibemsMsg_GetDestination(msg_pointer, &mut jms_destination);
         match status {
-            tibems_status::TIBEMS_OK => trace!("tibemsMsg_GetDestination: {:?}", status),
-            _ => error!("tibemsMsg_GetDestination: {:?}", status),
+            tibems_status::TIBEMS_OK => trace!("tibemsMsg_GetDestination: {status:?}"),
+            _ => error!("tibemsMsg_GetDestination: {status:?}"),
         }
         if jms_destination != 0 {
             //has a destination
@@ -2216,8 +2212,8 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
             let status =
                 tibco_ems_sys::tibemsDestination_GetType(jms_destination, &mut destination_type);
             match status {
-                tibems_status::TIBEMS_OK => trace!("tibemsDestination_GetType: {:?}", status),
-                _ => error!("tibemsDestination_GetType: {:?}", status),
+                tibems_status::TIBEMS_OK => trace!("tibemsDestination_GetType: {status:?}"),
+                _ => error!("tibemsDestination_GetType: {status:?}"),
             }
             let buf_size = 1024;
             let buf_vec: Vec<i8> = vec![0; buf_size];
@@ -2225,8 +2221,8 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
             let status =
                 tibco_ems_sys::tibemsDestination_GetName(jms_destination, buf_ref, buf_size);
             match status {
-                tibems_status::TIBEMS_OK => trace!("tibemsDestination_GetName: {:?}", status),
-                _ => error!("tibemsDestination_GetName: {:?}", status),
+                tibems_status::TIBEMS_OK => trace!("tibemsDestination_GetName: {status:?}"),
+                _ => error!("tibemsDestination_GetName: {status:?}"),
             }
             let destination_name: String = CStr::from_ptr(buf_ref).to_str().unwrap().to_string();
             let jms_destination_obj: Option<Destination> = match destination_type {
@@ -2249,8 +2245,8 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
         let mut reply_destination: usize = 0;
         let status = tibco_ems_sys::tibemsMsg_GetReplyTo(msg_pointer, &mut reply_destination);
         match status {
-            tibems_status::TIBEMS_OK => trace!("tibemsMsg_GetReplyTo: {:?}", status),
-            _ => error!("tibemsMsg_GetReplyTo: {:?}", status),
+            tibems_status::TIBEMS_OK => trace!("tibemsMsg_GetReplyTo: {status:?}"),
+            _ => error!("tibemsMsg_GetReplyTo: {status:?}"),
         }
         if reply_destination != 0 {
             //has a destination
@@ -2258,8 +2254,8 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
             let status =
                 tibco_ems_sys::tibemsDestination_GetType(reply_destination, &mut destination_type);
             match status {
-                tibems_status::TIBEMS_OK => trace!("tibemsDestination_GetType: {:?}", status),
-                _ => error!("tibemsDestination_GetType: {:?}", status),
+                tibems_status::TIBEMS_OK => trace!("tibemsDestination_GetType: {status:?}"),
+                _ => error!("tibemsDestination_GetType: {status:?}"),
             }
             let buf_size = 1024;
             let buf_vec: Vec<i8> = vec![0; buf_size];
@@ -2267,8 +2263,8 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
             let status =
                 tibco_ems_sys::tibemsDestination_GetName(reply_destination, buf_ref, buf_size);
             match status {
-                tibems_status::TIBEMS_OK => trace!("tibemsDestination_GetName: {:?}", status),
-                _ => error!("tibemsDestination_GetName: {:?}", status),
+                tibems_status::TIBEMS_OK => trace!("tibemsDestination_GetName: {status:?}"),
+                _ => error!("tibemsDestination_GetName: {status:?}"),
             }
             let destination_name: String = CStr::from_ptr(buf_ref).to_str().unwrap().to_string();
             let reply_destination_obj: Option<Destination> = match destination_type {

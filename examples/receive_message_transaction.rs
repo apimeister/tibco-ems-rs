@@ -30,7 +30,7 @@ fn main() {
                 }
             }
             Err(status) => {
-                println!("returned status: {:?}", status);
+                println!("returned status: {status:?}");
             }
         }
     }

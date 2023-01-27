@@ -1,3 +1,7 @@
+# 0.5.1 2023-01-27
+
+* support expiration property on queues/topics
+
 # 0.5.0 2023-01-14
 
 * typed jms receive method

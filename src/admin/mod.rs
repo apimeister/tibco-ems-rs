@@ -24,7 +24,7 @@ pub fn connect(url: &str, user: &str, password: &str) -> Result<Connection, Erro
             //check connection for active server
             let active_url = conn.get_active_url().unwrap();
             drop(conn);
-            let admin_active_url = format!("<$admin>:{}", active_url);
+            let admin_active_url = format!("<$admin>:{active_url}");
             super::connect(&admin_active_url, user, password)
         }
         Err(err) => Err(err),
@@ -243,6 +243,9 @@ pub fn create_queue(session: &Session, queue: &QueueInfo) -> Result<(), Error> {
     }
     if let Some(val) = queue.prefetch {
         msg.body.insert("pf".to_string(), TypedValue::Integer(val));
+    }
+    if let Some(val) = queue.expiry_override {
+        msg.body.insert("expy".to_string(), TypedValue::Long(val));
     }
 
     //header
@@ -478,6 +481,9 @@ pub fn create_topic(session: &Session, topic: &TopicInfo) -> Result<(), Error> {
     }
     if let Some(val) = topic.prefetch {
         msg.body.insert("pf".to_string(), TypedValue::Integer(val));
+    }
+    if let Some(val) = topic.expiry_override {
+        msg.body.insert("expy".to_string(), TypedValue::Long(val));
     }
 
     //header

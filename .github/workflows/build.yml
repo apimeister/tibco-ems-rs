@@ -50,3 +50,4 @@ jobs:
       uses: actions-rs/tarpaulin@v0.1
       with:
         args: --no-default-features
+        version: '0.26.0'

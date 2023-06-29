@@ -31,7 +31,7 @@ jobs:
       run: cargo clippy --all -- -D warnings
     - uses: taiki-e/install-action@nextest
     - name: Cargo Test
-      run: cargo nextest run
+      run: cargo nextest run --no-default-features
     - name: merge
       if: github.event_name == 'pull_request' && github.actor == 'dependabot[bot]'
       run: |

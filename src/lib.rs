@@ -25,14 +25,14 @@ pub mod stream;
 
 /// holds the native Connection pointer
 #[allow(dead_code)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Connection {
     pointer: Arc<usize>,
 }
 
 /// holds the native Session pointer
 #[allow(dead_code)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Session {
     pointer: usize,
     producer_pointer: usize,
@@ -40,7 +40,7 @@ pub struct Session {
 
 /// holds the native Consumer pointer
 #[allow(dead_code)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Consumer {
     pointer: usize,
 }
@@ -165,7 +165,7 @@ impl Clone for MapMessage {
 
 /// Message enum wich represents the different message types
 #[allow(dead_code)]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum Message {
     /// represents a Text Message
     TextMessage(TextMessage),
@@ -2280,4 +2280,92 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
         }
     }
     msg
+}
+
+// Tests with Private Fields
+
+#[cfg(test)]
+mod private_field_tests {
+
+    use super::*;
+
+    #[test]
+    fn test_connection_debug() {
+        let connection = Connection {
+            pointer: Arc::new(123),
+        };
+
+        // Ensure that the Debug implementation displays the struct's fields correctly
+        assert_eq!(format!("{:?}", connection), "Connection { pointer: 123 }");
+    }
+
+    #[test]
+    fn test_connection_clone() {
+        let connection = Connection {
+            pointer: Arc::new(123),
+        };
+
+        // Clone the connection
+        let cloned_connection = connection.clone();
+
+        // Ensure that the cloned connection is equal to the original connection
+        assert_eq!(cloned_connection, connection);
+    }
+
+    #[test]
+    fn test_session_debug() {
+        let session = Session {
+            pointer: 123,
+            producer_pointer: 456,
+        };
+
+        // Ensure that the Debug implementation displays the struct's fields correctly
+        assert_eq!(
+            format!("{:?}", session),
+            "Session { pointer: 123, producer_pointer: 456 }"
+        );
+    }
+
+    #[test]
+    fn test_session_clone() {
+        let session = Session {
+            pointer: 123,
+            producer_pointer: 456,
+        };
+
+        // Clone the session
+        let cloned_session = session.clone();
+
+        // Ensure that the cloned session is equal to the original session
+        assert_eq!(cloned_session, session);
+    }
+    #[test]
+    fn test_consumer_debug() {
+        let consumer = Consumer { pointer: 123 };
+
+        // Ensure that the Debug implementation displays the struct's fields correctly
+        assert_eq!(format!("{:?}", consumer), "Consumer { pointer: 123 }");
+    }
+
+    #[test]
+    fn test_consumer_copy() {
+        let consumer = Consumer { pointer: 123 };
+
+        // Copy the consumer
+        let copied_consumer = consumer;
+
+        // Ensure that the copied consumer is equal to the original consumer
+        assert_eq!(copied_consumer, consumer);
+    }
+
+    #[test]
+    fn test_consumer_clone() {
+        let consumer = Consumer { pointer: 123 };
+
+        // Clone the consumer
+        let cloned_consumer = consumer.clone();
+
+        // Ensure that the cloned consumer is equal to the original consumer
+        assert_eq!(cloned_consumer, consumer);
+    }
 }

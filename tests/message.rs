@@ -14,7 +14,7 @@ mod messages {
             body: String::from(""),
             destination: None,
             reply_to: None,
-            pointer: None
+            pointer: None,
         };
         assert_eq!(gen_msg, control_msg)
     }
@@ -29,13 +29,13 @@ mod messages {
             body: String::from("").into_bytes(),
             destination: None,
             reply_to: None,
-            pointer: None
+            pointer: None,
         };
         assert_eq!(gen_msg, control_msg)
     }
 
     #[test]
-    fn map_message_default() { 
+    fn map_message_default() {
         let gen_msg = tibco_ems::MapMessage {
             ..Default::default()
         };
@@ -45,7 +45,7 @@ mod messages {
             body,
             destination: None,
             reply_to: None,
-            pointer: None
+            pointer: None,
         };
         assert_eq!(gen_msg, control_msg)
     }
@@ -60,7 +60,7 @@ mod messages {
             body: String::from("").into_bytes(),
             destination: None,
             reply_to: None,
-            pointer: None
+            pointer: None,
         };
         assert_eq!(gen_msg, control_msg)
     }

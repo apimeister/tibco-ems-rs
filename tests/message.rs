@@ -1,39 +1,68 @@
 #[cfg(test)]
 mod messages {
-    use tibco_ems::Message;
+    use std::collections::HashMap;
+
+    use tibco_ems::{Message, TypedValue};
 
     #[test]
-    fn text_message_default() -> Result<(), String> {
-        let _msg = tibco_ems::TextMessage {
+    fn text_message_default() {
+        let gen_msg = tibco_ems::TextMessage {
             ..Default::default()
         };
-        Ok(())
+        let control_msg = tibco_ems::TextMessage {
+            header: None,
+            body: String::from(""),
+            destination: None,
+            reply_to: None,
+            pointer: None
+        };
+        assert_eq!(gen_msg, control_msg)
     }
 
     #[test]
-    fn text_message_body() -> Result<(), String> {
-        let _msg = tibco_ems::TextMessage {
-            body: "Hello World".to_string(),
+    fn bytes_message_default() {
+        let gen_msg = tibco_ems::BytesMessage {
             ..Default::default()
         };
-        Ok(())
+        let control_msg = tibco_ems::BytesMessage {
+            header: None,
+            body: String::from("").into_bytes(),
+            destination: None,
+            reply_to: None,
+            pointer: None
+        };
+        assert_eq!(gen_msg, control_msg)
     }
 
     #[test]
-    fn bytes_message_default() -> Result<(), String> {
-        let _msg = tibco_ems::BytesMessage {
+    fn map_message_default() { 
+        let gen_msg = tibco_ems::MapMessage {
             ..Default::default()
         };
-        Ok(())
+        let body: HashMap<String, TypedValue> = HashMap::new();
+        let control_msg = tibco_ems::MapMessage {
+            header: None,
+            body,
+            destination: None,
+            reply_to: None,
+            pointer: None
+        };
+        assert_eq!(gen_msg, control_msg)
     }
 
     #[test]
-    fn bytes_message_body() -> Result<(), String> {
-        let _msg = tibco_ems::BytesMessage {
-            body: vec![0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09],
+    fn object_message_default() {
+        let gen_msg = tibco_ems::ObjectMessage {
             ..Default::default()
         };
-        Ok(())
+        let control_msg = tibco_ems::ObjectMessage {
+            header: None,
+            body: String::from("").into_bytes(),
+            destination: None,
+            reply_to: None,
+            pointer: None
+        };
+        assert_eq!(gen_msg, control_msg)
     }
 
     #[test]

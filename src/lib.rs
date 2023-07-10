@@ -2,29 +2,24 @@
 //! Tibco EMS binding.
 
 #[cfg(feature = "ems-sys")]
+use {
+    log::{error, trace},
+    std::ffi::c_void,
+    std::ffi::CStr,
+    std::ffi::CString,
+    std::io::ErrorKind,
+    std::ops::Deref,
+    tibco_ems_sys::{tibemsDestinationType, tibemsMsgType, tibems_bool, tibems_status},
+};
+
 use enum_extract::extract;
-#[cfg(feature = "ems-sys")]
-use log::{error, trace};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-#[cfg(feature = "ems-sys")]
-use std::ffi::c_void;
-#[cfg(feature = "ems-sys")]
-use std::ffi::CStr;
-#[cfg(feature = "ems-sys")]
-use std::ffi::CString;
 use std::fmt;
 use std::io::Error;
-#[cfg(feature = "ems-sys")]
-use std::io::ErrorKind;
-#[cfg(feature = "ems-sys")]
-use std::ops::Deref;
 use std::sync::Arc;
-#[cfg(feature = "ems-sys")]
-use tibco_ems_sys::{tibemsDestinationType, tibemsMsgType, tibems_bool, tibems_status};
 
 pub mod admin;
-
 #[cfg(feature = "streaming")]
 pub mod stream;
 
@@ -61,7 +56,7 @@ pub enum Destination {
 }
 
 /// represents a Text Message
-#[derive(Default, Debug, Serialize, Deserialize)]
+#[derive(Default, Debug, Serialize, Deserialize, PartialEq)]
 pub struct TextMessage {
     /// message body
     pub body: String,
@@ -88,7 +83,7 @@ impl Clone for TextMessage {
 }
 
 /// represents a Binary Message
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, Serialize, Deserialize, Default, PartialEq)]
 pub struct BytesMessage {
     /// message body
     pub body: Vec<u8>,
@@ -115,7 +110,7 @@ impl Clone for BytesMessage {
 }
 
 /// represents a Object Message
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, Serialize, Deserialize, Default, PartialEq)]
 pub struct ObjectMessage {
     /// message body
     pub body: Vec<u8>,

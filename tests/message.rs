@@ -120,4 +120,3 @@ mod messages {
         assert_eq!(str, "TextMessage")
     }
 }
-

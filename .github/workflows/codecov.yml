@@ -25,20 +25,21 @@ jobs:
             ~/.rustup
             /usr/local/cargo
             target/
-            /opt/tibco/ems
+            opt/tibco/ems
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Install EMS
         env:
           TIB_VERSION: 10.2.1
           TIB_SHORT: 10.2
         run: |
-          echo "EMS_HOME=/opt/tibco/ems/${{ env.TIB_SHORT}}" >> $GITHUB_ENV
-          [ -d /opt/tibco/ems ] && echo "Tibco libs loaded from cache" && break
+          echo "EMS_HOME=opt/tibco/ems/${{ env.TIB_SHORT}}" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=opt/tibco/ems/${{ env.TIB_SHORT}}/lib:opt/tibco/ems/${{ env.TIB_SHORT}}/:opt/tibco/ems/${{ env.TIB_SHORT}}/lib/64:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          [ -d opt/tibco/ems ] && echo "Tibco libs loaded from cache" && break
           curl -O 'https://edownloads.tibco.com/Installers/tap/EMS-CE/${{ env.TIB_VERSION }}/TIB_ems-ce_${{ env.TIB_VERSION }}_linux_x86_64.zip?SJCDPTPG=${{ secrets.SJCDPTPG }}&ext=.zip'
           unzip TIB*
-          tar xzf TIB_ems-ce_${{ env.TIB_VERSION }}/tar/TIB_ems-ce_${{ env.TIB_VERSION }}_linux_x86_64-c_dev_kit.tar.gz
-          tar xzf TIB_ems-ce_${{ env.TIB_VERSION }}/tar/TIB_ems-ce_${{ env.TIB_VERSION }}_linux_x86_64-c_dotnet_client.tar.gz
-          tar xzf TIB_ems-ce_${{ env.TIB_VERSION }}/tar/TIB_ems-ce_${{ env.TIB_VERSION }}_linux_x86_64-thirdparty.tar.gz
+          tar vxzf TIB_ems-ce_${{ env.TIB_VERSION }}/tar/TIB_ems-ce_${{ env.TIB_VERSION }}_linux_x86_64-c_dev_kit.tar.gz
+          tar vxzf TIB_ems-ce_${{ env.TIB_VERSION }}/tar/TIB_ems-ce_${{ env.TIB_VERSION }}_linux_x86_64-c_dotnet_client.tar.gz
+          tar vxzf TIB_ems-ce_${{ env.TIB_VERSION }}/tar/TIB_ems-ce_${{ env.TIB_VERSION }}_linux_x86_64-thirdparty.tar.gz
           rm -rvf TIB*
       - name: Install Rust
         run: rustup update stable

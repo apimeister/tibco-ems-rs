@@ -2,8 +2,11 @@
 mod admin {
 
     use tibco_ems::{
-        admin::{AdminCommands, BridgeInfo, OverflowPolicy, QueueInfo, ServerState, TopicInfo, list_all_queues},
-        Destination, Session, Message, Connection
+        admin::{
+            list_all_queues, AdminCommands, BridgeInfo, OverflowPolicy, QueueInfo, ServerState,
+            TopicInfo,
+        },
+        Connection, Destination, Message, Session,
     };
 
     #[test]

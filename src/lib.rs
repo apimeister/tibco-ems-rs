@@ -208,6 +208,7 @@ pub fn connect(url: &str, user: &str, password: &str) -> Result<Connection, Erro
                 trace!("tibemsConnectionFactory_SetServerURL: {status:?}")
             }
             _ => {
+                // not testable, c_url protects from this error path
                 error!("tibemsConnectionFactory_SetServerURL: {status:?}");
                 return Err(Error::new(ErrorKind::InvalidData, "cannot set server url"));
             }
@@ -416,7 +417,10 @@ impl Connection {
         selector: Option<&str>,
     ) -> Result<stream::MessageStream<T>, Error> {
         let session = self.session().unwrap();
-        let consumer = session.queue_consumer(destination, selector).unwrap();
+        let consumer = match session.queue_consumer(destination, selector) {
+            Ok(c) => c,
+            Err(e) => return Err(e),
+        };
         let stream = stream::MessageStream::<T> {
             connection: std::rc::Rc::from(self.clone()),
             session: std::rc::Rc::from(session),

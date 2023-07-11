@@ -12,22 +12,24 @@ description = "A high level API for the Tibco EMS."
 [dependencies]
 log = "0.4"
 tibco_ems-sys = { version = "1", optional = true }
-serde = { version = "1", features = ["derive"] }
+serde = { version = "1", features = ["derive"] , optional = true}
 futures = { version = "0.3", optional = true }
 enum_extract = "0.1"
 opentelemetry = { version = "0.19", optional = true }
 
 [features]
-default = ["ems-sys"]
+default = ["ems-sys", "serde"]
 streaming = ["futures"]
 ems-sys = ["dep:tibco_ems-sys"]
 tracing = ["dep:opentelemetry"]
 test_with_ems = []
+serde = ["dep:serde"]
 
 [dev-dependencies]
 env_logger = "0.10"
 tokio = { version = "1", features = ["full"] }
 futures = "0.3"
+serde_json = "1"
 
 [[example]]
 name = "stream_text_message"

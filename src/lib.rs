@@ -2,42 +2,37 @@
 //! Tibco EMS binding.
 
 #[cfg(feature = "ems-sys")]
+use {
+    log::{error, trace},
+    std::ffi::c_void,
+    std::ffi::CStr,
+    std::ffi::CString,
+    std::io::ErrorKind,
+    std::ops::Deref,
+    tibco_ems_sys::{tibemsDestinationType, tibemsMsgType, tibems_bool, tibems_status},
+};
+
 use enum_extract::extract;
-#[cfg(feature = "ems-sys")]
-use log::{error, trace};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-#[cfg(feature = "ems-sys")]
-use std::ffi::c_void;
-#[cfg(feature = "ems-sys")]
-use std::ffi::CStr;
-#[cfg(feature = "ems-sys")]
-use std::ffi::CString;
 use std::fmt;
 use std::io::Error;
-#[cfg(feature = "ems-sys")]
-use std::io::ErrorKind;
-#[cfg(feature = "ems-sys")]
-use std::ops::Deref;
 use std::sync::Arc;
-#[cfg(feature = "ems-sys")]
-use tibco_ems_sys::{tibemsDestinationType, tibemsMsgType, tibems_bool, tibems_status};
 
 pub mod admin;
-
 #[cfg(feature = "streaming")]
 pub mod stream;
 
 /// holds the native Connection pointer
 #[allow(dead_code)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Connection {
     pointer: Arc<usize>,
 }
 
 /// holds the native Session pointer
 #[allow(dead_code)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Session {
     pointer: usize,
     producer_pointer: usize,
@@ -45,7 +40,7 @@ pub struct Session {
 
 /// holds the native Consumer pointer
 #[allow(dead_code)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Consumer {
     pointer: usize,
 }
@@ -61,7 +56,7 @@ pub enum Destination {
 }
 
 /// represents a Text Message
-#[derive(Default, Debug, Serialize, Deserialize)]
+#[derive(Default, Debug, Serialize, Deserialize, PartialEq)]
 pub struct TextMessage {
     /// message body
     pub body: String,
@@ -88,7 +83,7 @@ impl Clone for TextMessage {
 }
 
 /// represents a Binary Message
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, Serialize, Deserialize, Default, PartialEq)]
 pub struct BytesMessage {
     /// message body
     pub body: Vec<u8>,
@@ -115,7 +110,7 @@ impl Clone for BytesMessage {
 }
 
 /// represents a Object Message
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, Serialize, Deserialize, Default, PartialEq)]
 pub struct ObjectMessage {
     /// message body
     pub body: Vec<u8>,
@@ -170,7 +165,7 @@ impl Clone for MapMessage {
 
 /// Message enum wich represents the different message types
 #[allow(dead_code)]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum Message {
     /// represents a Text Message
     TextMessage(TextMessage),
@@ -2285,4 +2280,92 @@ fn build_message_from_pointer(msg_pointer: usize) -> Message {
         }
     }
     msg
+}
+
+// Tests with Private Fields
+
+#[cfg(test)]
+mod private_field_tests {
+
+    use super::*;
+
+    #[test]
+    fn test_connection_debug() {
+        let connection = Connection {
+            pointer: Arc::new(123),
+        };
+
+        // Ensure that the Debug implementation displays the struct's fields correctly
+        assert_eq!(format!("{:?}", connection), "Connection { pointer: 123 }");
+    }
+
+    #[test]
+    fn test_connection_clone() {
+        let connection = Connection {
+            pointer: Arc::new(123),
+        };
+
+        // Clone the connection
+        let cloned_connection = connection.clone();
+
+        // Ensure that the cloned connection is equal to the original connection
+        assert_eq!(cloned_connection, connection);
+    }
+
+    #[test]
+    fn test_session_debug() {
+        let session = Session {
+            pointer: 123,
+            producer_pointer: 456,
+        };
+
+        // Ensure that the Debug implementation displays the struct's fields correctly
+        assert_eq!(
+            format!("{:?}", session),
+            "Session { pointer: 123, producer_pointer: 456 }"
+        );
+    }
+
+    #[test]
+    fn test_session_clone() {
+        let session = Session {
+            pointer: 123,
+            producer_pointer: 456,
+        };
+
+        // Clone the session
+        let cloned_session = session.clone();
+
+        // Ensure that the cloned session is equal to the original session
+        assert_eq!(cloned_session, session);
+    }
+    #[test]
+    fn test_consumer_debug() {
+        let consumer = Consumer { pointer: 123 };
+
+        // Ensure that the Debug implementation displays the struct's fields correctly
+        assert_eq!(format!("{:?}", consumer), "Consumer { pointer: 123 }");
+    }
+
+    #[test]
+    fn test_consumer_copy() {
+        let consumer = Consumer { pointer: 123 };
+
+        // Copy the consumer
+        let copied_consumer = consumer;
+
+        // Ensure that the copied consumer is equal to the original consumer
+        assert_eq!(copied_consumer, consumer);
+    }
+
+    #[test]
+    fn test_consumer_clone() {
+        let consumer = Consumer { pointer: 123 };
+
+        // Clone the consumer
+        let cloned_consumer = consumer.clone();
+
+        // Ensure that the cloned consumer is equal to the original consumer
+        assert_eq!(cloned_consumer, consumer);
+    }
 }

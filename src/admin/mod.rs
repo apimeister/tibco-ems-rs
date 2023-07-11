@@ -770,7 +770,7 @@ pub enum OverflowPolicy {
 }
 
 /// admin command codes used on the admin queue
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum AdminCommands {
     /// delete a destination
     DeleteDestination = 16,
@@ -789,7 +789,7 @@ pub enum AdminCommands {
 }
 
 /// server states
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ServerState {
     /// server is standby
     Standby = 3,

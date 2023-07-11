@@ -2,8 +2,8 @@
 mod admin {
 
     use tibco_ems::{
-        admin::{BridgeInfo, OverflowPolicy, QueueInfo, TopicInfo},
-        Destination,
+        admin::{AdminCommands, BridgeInfo, OverflowPolicy, QueueInfo, ServerState, TopicInfo, list_all_queues},
+        Destination, Session, Message, Connection
     };
 
     #[test]
@@ -73,5 +73,68 @@ mod admin {
         assert_eq!(default_policy as i32, 0);
         assert_eq!(discard_old_policy as i32, 1);
         assert_eq!(reject_incoming_policy as i32, 2);
+    }
+
+    #[test]
+    fn test_admin_commands_delete_destination() {
+        let command = AdminCommands::DeleteDestination;
+        assert_eq!(command, AdminCommands::DeleteDestination);
+        assert_eq!(command as u8, 16);
+    }
+
+    #[test]
+    fn test_admin_commands_create_destination() {
+        let command = AdminCommands::CreateDestination;
+        assert_eq!(command, AdminCommands::CreateDestination);
+        assert_eq!(command as u8, 18);
+    }
+
+    #[test]
+    fn test_admin_commands_list_destination() {
+        let command = AdminCommands::ListDestination;
+        assert_eq!(command, AdminCommands::ListDestination);
+        assert_eq!(command as u8, 19);
+    }
+
+    #[test]
+    fn test_admin_commands_get_server_info() {
+        let command = AdminCommands::GetServerInfo;
+        assert_eq!(command, AdminCommands::GetServerInfo);
+        assert_eq!(command as u8, 120);
+    }
+
+    #[test]
+    fn test_admin_commands_get_state_info() {
+        let command = AdminCommands::GetStateInfo;
+        assert_eq!(command, AdminCommands::GetStateInfo);
+        assert_eq!(command as u8, 127);
+    }
+
+    #[test]
+    fn test_admin_commands_create_bridge() {
+        let command = AdminCommands::CreateBridge;
+        assert_eq!(command, AdminCommands::CreateBridge);
+        assert_eq!(command as u8, 220);
+    }
+
+    #[test]
+    fn test_admin_commands_delete_bridge() {
+        let command = AdminCommands::DeleteBridge;
+        assert_eq!(command, AdminCommands::DeleteBridge);
+        assert_eq!(command as u8, 221);
+    }
+
+    #[test]
+    fn test_server_state_standby() {
+        let state = ServerState::Standby;
+        assert_eq!(state, ServerState::Standby);
+        assert_eq!(state as u8, 3);
+    }
+
+    #[test]
+    fn test_server_state_active() {
+        let state = ServerState::Active;
+        assert_eq!(state, ServerState::Active);
+        assert_eq!(state as u8, 4);
     }
 }

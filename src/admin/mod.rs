@@ -8,6 +8,7 @@ use super::Session;
 use super::TypedValue;
 use enum_extract::extract;
 use log::{error, trace, warn};
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::io::Error;
@@ -36,8 +37,9 @@ pub fn connect(url: &str, user: &str, password: &str) -> Result<Connection, Erro
 //
 
 /// holds static queue information
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, Default, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct QueueInfo {
     /// name of the queue
     pub name: String,
@@ -314,8 +316,9 @@ pub fn delete_queue(session: &Session, queue: &str) -> Result<(), Error> {
 //
 
 /// holds static topic information
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, Default, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct TopicInfo {
     /// name of the topic
     pub name: String,
@@ -741,8 +744,9 @@ pub fn get_server_state(session: &Session) -> Result<ServerState, Error> {
 }
 
 /// holds static bridge information
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct BridgeInfo {
     /// source of the bridge
     pub source: Destination,
@@ -753,7 +757,9 @@ pub struct BridgeInfo {
 }
 
 /// available overflow policies
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+
 pub enum OverflowPolicy {
     /// default overflow policy
     Default = 0,

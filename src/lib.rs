@@ -5,6 +5,7 @@
 use enum_extract::extract;
 #[cfg(feature = "ems-sys")]
 use log::{error, trace};
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 #[cfg(feature = "ems-sys")]
@@ -52,7 +53,8 @@ pub struct Consumer {
 
 /// Destination, can either be Queue or Topic
 #[allow(dead_code)]
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum Destination {
     /// Destination type Queue
     Queue(String),
@@ -61,7 +63,8 @@ pub enum Destination {
 }
 
 /// represents a Text Message
-#[derive(Default, Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct TextMessage {
     /// message body
     pub body: String,
@@ -88,7 +91,8 @@ impl Clone for TextMessage {
 }
 
 /// represents a Binary Message
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, Default, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct BytesMessage {
     /// message body
     pub body: Vec<u8>,
@@ -115,7 +119,8 @@ impl Clone for BytesMessage {
 }
 
 /// represents a Object Message
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, Default, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct ObjectMessage {
     /// message body
     pub body: Vec<u8>,
@@ -142,7 +147,8 @@ impl Clone for ObjectMessage {
 }
 
 /// represents a Map Message
-#[derive(Debug, Serialize, Deserialize, PartialEq, Default)]
+#[derive(Debug, PartialEq, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct MapMessage {
     /// message body map properties
     pub body: HashMap<String, TypedValue>,
@@ -170,7 +176,8 @@ impl Clone for MapMessage {
 
 /// Message enum wich represents the different message types
 #[allow(dead_code)]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum Message {
     /// represents a Text Message
     TextMessage(TextMessage),
@@ -1407,7 +1414,8 @@ impl From<ObjectMessage> for Message {
 
 /// represents a typed value, which is used for message header and message properties
 #[allow(dead_code)]
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum TypedValue {
     /// represents a String Value
     String(String),

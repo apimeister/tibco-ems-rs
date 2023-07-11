@@ -4,6 +4,7 @@ mod connection {
 
     #[test]
     fn test_connection_failure() {
+        // for this to work authentication needs to be enabled on the server
         let result = tibco_ems::connect("doenst-matter", "admin", "");
         assert!(result.is_err());
     }
@@ -63,6 +64,7 @@ mod ConnectionStruct {
         use tibco_ems::{Destination, TextMessage};
 
         let con = tibco_ems::connect("tcp://localhost:7222", "admin", "").unwrap();
+        // for this to work "test-failure" queue may not be present on the server
         let dest = Destination::Queue("test-failure".into());
         let stream = con.open_stream::<TextMessage>(&dest, None);
         assert!(stream.is_err());
@@ -74,6 +76,7 @@ mod ConnectionStruct {
         use tibco_ems::{Destination, TextMessage};
 
         let con = tibco_ems::connect("tcp://localhost:7222", "admin", "").unwrap();
+        // for this to work "test-success" queue needs to be present on the server
         let dest = Destination::Queue("test-success".into());
         let stream = con.open_stream::<TextMessage>(&dest, None);
         assert!(stream.is_ok());

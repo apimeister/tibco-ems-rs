@@ -79,7 +79,7 @@ mod messages {
     #[test]
     fn object_message_display() {
         let msg = tibco_ems::ObjectMessage {
-            pointer: Some(5),
+            pointer: None,
             ..Default::default()
         };
         let msg2: Message = msg.into();
@@ -90,7 +90,7 @@ mod messages {
     #[test]
     fn bytes_message_display() {
         let msg = tibco_ems::BytesMessage {
-            pointer: Some(5),
+            pointer: None,
             ..Default::default()
         };
         let msg2: Message = msg.into();
@@ -101,7 +101,7 @@ mod messages {
     #[test]
     fn map_message_display() {
         let msg = tibco_ems::MapMessage {
-            pointer: Some(5),
+            pointer: None,
             ..Default::default()
         };
         let msg2: Message = msg.into();
@@ -112,7 +112,7 @@ mod messages {
     #[test]
     fn text_message_display() {
         let msg = tibco_ems::TextMessage {
-            pointer: Some(5),
+            pointer: None,
             ..Default::default()
         };
         let msg2: Message = msg.into();

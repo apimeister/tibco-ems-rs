@@ -5,7 +5,9 @@ mod serde {
 
     use tibco_ems::admin::{BridgeInfo, OverflowPolicy};
     use tibco_ems::admin::{QueueInfo, TopicInfo};
-    use tibco_ems::{BytesMessage, Destination, TextMessage, TypedValue, ObjectMessage, MapMessage, Message};
+    use tibco_ems::{
+        BytesMessage, Destination, MapMessage, Message, ObjectMessage, TextMessage, TypedValue,
+    };
 
     #[test]
     fn test_queue_info_serde() {
@@ -184,7 +186,10 @@ mod serde {
     #[test]
     fn test_object_message_serde() {
         let mut header = HashMap::new();
-        header.insert("header_key".to_string(), TypedValue::String("header_value".to_string()));
+        header.insert(
+            "header_key".to_string(),
+            TypedValue::String("header_value".to_string()),
+        );
 
         let object_message = ObjectMessage {
             body: vec![1, 2, 3, 4, 5],
@@ -211,7 +216,10 @@ mod serde {
         body.insert("key2".to_string(), TypedValue::Integer(42));
 
         let mut header = HashMap::new();
-        header.insert("header_key".to_string(), TypedValue::String("header_value".to_string()));
+        header.insert(
+            "header_key".to_string(),
+            TypedValue::String("header_value".to_string()),
+        );
 
         let map_message = MapMessage {
             body,

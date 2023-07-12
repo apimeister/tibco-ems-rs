@@ -138,3 +138,95 @@ mod admin {
         assert_eq!(state as u8, 4);
     }
 }
+
+#[cfg(feature = "integration-tests")]
+#[cfg(test)]
+mod admin_integration {
+    use tibco_ems::admin::{list_all_queues, QueueInfo, list_all_topics, create_queue, delete_queue, create_topic, delete_topic, TopicInfo, create_bridge, delete_bridge, BridgeInfo, get_server_state};
+
+    const USER: &str = "admin";
+    const PASSWORD: &str = "";
+    const URL: &str = "tcp://localhost:7222";
+
+    #[test]
+    fn test_admin_connection_success() {
+        let con = tibco_ems::admin::connect(URL, USER, PASSWORD);
+        assert!(con.is_ok());
+    }
+
+    #[test]
+    fn test_admin_connection_failure() {
+        let con = tibco_ems::admin::connect(URL, USER, "PASSWORD");
+        assert!(con.is_err());
+    }
+
+    #[test]
+    fn test_admin_list_all_queues_success() {
+        let con = tibco_ems::admin::connect(URL, USER, PASSWORD).unwrap();
+        let session = con.session().unwrap();
+        let queues_res = list_all_queues(&session);
+        assert!(queues_res.is_ok());
+        assert!(queues_res.unwrap().len() >= 1);
+    }
+
+    //FIXME: implement failures
+
+    #[test]
+    fn test_admin_list_all_topics_success() {
+        let con = tibco_ems::admin::connect(URL, USER, PASSWORD).unwrap();
+        let session = con.session().unwrap();
+        let topics_res = list_all_topics(&session);
+        assert!(topics_res.is_ok());
+        assert!(topics_res.unwrap().len() >= 1);
+    }
+
+    #[test]
+    fn test_admin_create_delete_queue_success() {
+        let con = tibco_ems::admin::connect(URL, USER, PASSWORD).unwrap();
+        let session = con.session().unwrap();
+        let queue = QueueInfo { name: "create_queue".into(), ..Default::default()};
+        let create_res = create_queue(&session, &queue);
+        assert!(create_res.is_ok());
+        let delete_res = delete_queue(&session, "create_queue");
+        assert!(delete_res.is_ok());
+    }
+
+    #[test]
+    fn test_admin_create_delete_topic_success() {
+        let con = tibco_ems::admin::connect(URL, USER, PASSWORD).unwrap();
+        let session = con.session().unwrap();
+        let topic = TopicInfo { name: "create_topic".into(), ..Default::default()};
+        let create_res = create_topic(&session, &topic);
+        assert!(create_res.is_ok());
+        let delete_res = delete_topic(&session, "create_topic");
+        assert!(delete_res.is_ok());
+    }
+
+    #[test]
+    fn test_admin_create_delete_bridge_success() {
+        let con = tibco_ems::admin::connect(URL, USER, PASSWORD).unwrap();
+        let session = con.session().unwrap();
+        let queue = QueueInfo { name: "create_bridge".into(), ..Default::default()};
+        let _ = create_queue(&session, &queue).unwrap();
+        let topic = TopicInfo { name: "create_bridge".into(), ..Default::default()};
+        let _ = create_topic(&session, &topic).unwrap();
+        let queue = tibco_ems::Destination::Queue("create_bridge".into());
+        let topic = tibco_ems::Destination::Topic("create_bridge".into());
+        let bridge = BridgeInfo { source: topic, target: queue, selector: None};
+        let create_res = create_bridge(&session, &bridge);
+        assert!(create_res.is_ok());
+        let delete_res = delete_bridge(&session, &bridge);
+        assert!(delete_res.is_ok());
+        let _ = delete_queue(&session, "create_bridge");
+        let _ = delete_topic(&session, "create_bridge");
+    }
+
+    #[test]
+    fn test_admin_get_server_state_success() {
+        let con = tibco_ems::admin::connect(URL, USER, PASSWORD).unwrap();
+        let session = con.session().unwrap();
+        let server_state_res = get_server_state(&session);
+        assert!(server_state_res.is_ok());
+    }
+
+}

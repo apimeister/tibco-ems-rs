@@ -1,17 +1,12 @@
 //! Tibco EMS admin functions.
 
-use super::Connection;
-use super::Destination;
-use super::MapMessage;
-use super::Message;
-use super::Session;
-use super::TypedValue;
+use super::{Connection, Destination, MapMessage, Message, Session, TypedValue};
 use enum_extract::extract;
 use log::{error, trace, warn};
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::io::Error;
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 
 const ADMIN_QUEUE_NAME: &str = "$sys.admin";
 const DESTINATION_TYPE_QUEUE: i32 = 1;

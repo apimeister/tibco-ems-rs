@@ -3,11 +3,10 @@
 mod session_struct {
 
     use tibco_ems::{Destination, TextMessage};
-    
+
     const USER: &str = "admin";
     const PASSWORD: &str = "";
     const URL: &str = "tcp://localhost:7222";
-
 
     #[test]
     fn test_queue_consumer_with_queue_success() {

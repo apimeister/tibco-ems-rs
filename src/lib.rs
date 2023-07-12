@@ -1,11 +1,11 @@
 #![warn(missing_docs)]
 //! Tibco EMS binding.
 
+use enum_extract::extract;
 use std::collections::HashMap;
 use std::fmt;
 use std::io::Error;
 use std::sync::Arc;
-use enum_extract::extract;
 
 #[cfg(feature = "ems-sys")]
 use {

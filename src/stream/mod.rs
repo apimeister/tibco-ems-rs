@@ -27,8 +27,10 @@ impl Stream for MessageStream<TextMessage> {
         let result = consumer.receive_message(None);
         match result {
             Ok(result) => match result {
-                Some(Message::TextMessage(ref text_message)) => Poll::Ready(Some(text_message.clone())),
-                _ => Poll::Ready(None)
+                Some(Message::TextMessage(ref text_message)) => {
+                    Poll::Ready(Some(text_message.clone()))
+                }
+                _ => Poll::Ready(None),
             },
             Err(_err) => Poll::Ready(None),
         }
@@ -43,8 +45,10 @@ impl Stream for MessageStream<BytesMessage> {
         let result = consumer.receive_message(None);
         match result {
             Ok(result) => match result {
-                Some(Message::BytesMessage(ref bytes_message)) => Poll::Ready(Some(bytes_message.clone())),
-                _ => Poll::Ready(None)
+                Some(Message::BytesMessage(ref bytes_message)) => {
+                    Poll::Ready(Some(bytes_message.clone()))
+                }
+                _ => Poll::Ready(None),
             },
             Err(_err) => Poll::Ready(None),
         }

@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CARGO_TERM_COLOR: always
+      TIB_VERSION: 10.2.1
+      TIB_SHORT: 10.2
     steps:
       - uses: actions/checkout@v3
         with:
@@ -25,22 +27,28 @@ jobs:
             ~/.rustup
             /usr/local/cargo
             target/
-            opt/tibco/ems
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Install EMS
-        env:
-          TIB_VERSION: 10.2.1
-          TIB_SHORT: 10.2
         run: |
           echo "EMS_HOME=opt/tibco/ems/${{ env.TIB_SHORT}}" >> $GITHUB_ENV
           echo "LD_LIBRARY_PATH=opt/tibco/ems/${{ env.TIB_SHORT}}/lib:opt/tibco/ems/${{ env.TIB_SHORT}}/:opt/tibco/ems/${{ env.TIB_SHORT}}/lib/64:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-          [ -d opt/tibco/ems ] && echo "Tibco libs loaded from cache" && break
           curl -O 'https://edownloads.tibco.com/Installers/tap/EMS-CE/${{ env.TIB_VERSION }}/TIB_ems-ce_${{ env.TIB_VERSION }}_linux_x86_64.zip?SJCDPTPG=${{ secrets.SJCDPTPG }}&ext=.zip'
           unzip TIB*
           tar vxzf TIB_ems-ce_${{ env.TIB_VERSION }}/tar/TIB_ems-ce_${{ env.TIB_VERSION }}_linux_x86_64-c_dev_kit.tar.gz
           tar vxzf TIB_ems-ce_${{ env.TIB_VERSION }}/tar/TIB_ems-ce_${{ env.TIB_VERSION }}_linux_x86_64-c_dotnet_client.tar.gz
           tar vxzf TIB_ems-ce_${{ env.TIB_VERSION }}/tar/TIB_ems-ce_${{ env.TIB_VERSION }}_linux_x86_64-thirdparty.tar.gz
+          tar vxzf TIB_ems-ce_${{ env.TIB_VERSION }}/tar/TIB_ems-ce_${{ env.TIB_VERSION }}_linux_x86_64-server.tar.gz
+          tar vxzf TIB_ems-ce_${{ env.TIB_VERSION }}/tar/TIB_ems-ce_${{ env.TIB_VERSION }}_linux_x86_64-samples_src.tar.gz
           rm -rvf TIB*
+      - name: Configure EMS for testing
+        working-directory: opt/tibco/ems/${{ env.TIB_SHORT}}/bin
+        run: |
+          cp -v ../samples/config/tibemsd.conf ./
+          sed -i "s/authorization.*/authorization = enabled/" tibemsd.conf
+          mkdir datastore
+          echo "test-success" > queues.conf
+          echo "test-success" > topics.conf
+          ./tibemsd &
       - name: Install Rust
         run: rustup update stable
       - name: Install cargo-llvm-cov
@@ -48,7 +56,7 @@ jobs:
         with:
           tool: cargo-llvm-cov,nextest
       - name: Generate code coverage
-        run: cargo llvm-cov --features default,streaming,tracing --workspace --lcov --output-path lcov.info nextest
+        run: cargo llvm-cov --features default,streaming,tracing,integration-tests --workspace --lcov --output-path lcov.info nextest
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:

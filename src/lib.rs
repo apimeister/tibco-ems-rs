@@ -1,28 +1,28 @@
 #![warn(missing_docs)]
 //! Tibco EMS binding.
 
-#[cfg(feature = "ems-sys")]
-use {
-    log::{error, trace},
-    std::ffi::c_void,
-    std::ffi::CStr,
-    std::ffi::CString,
-    std::io::ErrorKind,
-    std::ops::Deref,
-    tibco_ems_sys::{tibemsDestinationType, tibemsMsgType, tibems_bool, tibems_status},
-};
-
 use enum_extract::extract;
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
 use std::io::Error;
 use std::sync::Arc;
 
-pub mod admin;
+#[cfg(feature = "ems-sys")]
+use {
+    log::{error, trace},
+    std::ffi::{c_void, CStr, CString},
+    std::io::ErrorKind,
+    std::ops::Deref,
+    tibco_ems_sys::{tibemsDestinationType, tibemsMsgType, tibems_bool, tibems_status},
+};
+
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+
 #[cfg(feature = "streaming")]
 pub mod stream;
+
+pub mod admin;
 
 /// holds the native Connection pointer
 #[allow(dead_code)]
@@ -208,6 +208,7 @@ pub fn connect(url: &str, user: &str, password: &str) -> Result<Connection, Erro
                 trace!("tibemsConnectionFactory_SetServerURL: {status:?}")
             }
             _ => {
+                // not testable, c_url protects from this error path
                 error!("tibemsConnectionFactory_SetServerURL: {status:?}");
                 return Err(Error::new(ErrorKind::InvalidData, "cannot set server url"));
             }
@@ -408,15 +409,18 @@ impl Connection {
         Ok("".to_string())
     }
 
-    // open a consumer as stream of messages
+    /// open a consumer as stream of messages
     #[cfg(feature = "streaming")]
-    pub fn open_stream<'stream, T: Into<Message>>(
-        &'stream self,
+    pub fn open_stream<T: Into<Message>>(
+        &self,
         destination: &Destination,
         selector: Option<&str>,
     ) -> Result<stream::MessageStream<T>, Error> {
         let session = self.session().unwrap();
-        let consumer = session.queue_consumer(destination, selector).unwrap();
+        let consumer = match session.queue_consumer(destination, selector) {
+            Ok(c) => c,
+            Err(e) => return Err(e),
+        };
         let stream = stream::MessageStream::<T> {
             connection: std::rc::Rc::from(self.clone()),
             session: std::rc::Rc::from(session),

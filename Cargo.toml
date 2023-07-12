@@ -24,6 +24,7 @@ ems-sys = ["dep:tibco_ems-sys"]
 tracing = ["dep:opentelemetry"]
 test_with_ems = []
 serde = ["dep:serde"]
+integration-tests = []
 
 [dev-dependencies]
 env_logger = "0.10"

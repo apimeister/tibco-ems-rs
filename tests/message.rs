@@ -311,7 +311,7 @@ mod map_message {
 
 #[cfg(test)]
 mod message {
-    use tibco_ems::{BytesMessage, MapMessage, Message, ObjectMessage, TextMessage};
+    use tibco_ems::{BytesMessage, MapMessage, Message, ObjectMessage, TextMessage, TypedValue};
 
     #[test]
     fn test_text_message_variant() {
@@ -351,5 +351,85 @@ mod message {
         let message = Message::MapMessage(map_message.clone());
 
         assert_eq!(message, Message::MapMessage(map_message));
+    }
+
+    #[test]
+    fn test_typed_value_string() {
+        let value = TypedValue::String("Hello".to_string());
+        let formatted = format!("{}", value);
+        assert_eq!(formatted, "Hello");
+    }
+
+    #[test]
+    fn test_typed_value_boolean() {
+        let value = TypedValue::Boolean(true);
+        let formatted = format!("{}", value);
+        assert_eq!(formatted, "true");
+    }
+
+    #[test]
+    fn test_typed_value_integer() {
+        let value = TypedValue::Integer(42);
+        let formatted = format!("{}", value);
+        assert_eq!(formatted, "42");
+    }
+
+    #[test]
+    fn test_typed_value_long() {
+        let value = TypedValue::Long(1234567890);
+        let formatted = format!("{}", value);
+        assert_eq!(formatted, "1234567890");
+    }
+
+    #[test]
+    fn test_typed_value_float() {
+        let value = TypedValue::Float(3.14);
+        let formatted = format!("{}", value);
+        assert_eq!(formatted, "3.14");
+    }
+
+    #[test]
+    fn test_typed_value_double() {
+        let value = TypedValue::Double(2.71828);
+        let formatted = format!("{}", value);
+        assert_eq!(formatted, "2.71828");
+    }
+
+    #[test]
+    fn test_typed_value_binary() {
+        let value = TypedValue::Binary(vec![0x01, 0x02, 0x03]);
+        let formatted = format!("{}", value);
+        assert_eq!(formatted, "[1, 2, 3]");
+    }
+
+    #[test]
+    fn test_typed_value_map() {
+        let map_message = MapMessage {
+            ..Default::default()
+        };
+        let value = TypedValue::Map(map_message);
+        let formatted = format!("{}", value);
+        assert_eq!(formatted, "MapMessage { body: {}, header: None, destination: None, reply_to: None, pointer: None }");
+    }
+
+    // Helper function to compare formatted output with expected value
+    fn assert_display<T: std::fmt::Display>(value: T, expected: &str) {
+        let formatted = format!("{}", value);
+        assert_eq!(formatted, expected);
+    }
+
+    #[test]
+    fn test_typed_value_display_helper() {
+        assert_display(TypedValue::String("Hello".to_string()), "Hello");
+        assert_display(TypedValue::Boolean(true), "true");
+        assert_display(TypedValue::Integer(42), "42");
+        assert_display(TypedValue::Long(1234567890), "1234567890");
+        assert_display(TypedValue::Float(3.14), "3.14");
+        assert_display(TypedValue::Double(2.71828), "2.71828");
+        assert_display(TypedValue::Binary(vec![0x01, 0x02, 0x03]), "[1, 2, 3]");
+        let map_message = MapMessage {
+            ..Default::default()
+        };
+        assert_display(TypedValue::Map(map_message), "MapMessage { body: {}, header: None, destination: None, reply_to: None, pointer: None }");
     }
 }

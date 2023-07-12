@@ -1,11 +1,6 @@
 //! Tibco EMS admin functions.
 
-use super::Connection;
-use super::Destination;
-use super::MapMessage;
-use super::Message;
-use super::Session;
-use super::TypedValue;
+use super::{Connection, Destination, MapMessage, Message, Session, TypedValue};
 use enum_extract::extract;
 use log::{error, trace, warn};
 #[cfg(feature = "serde")]
@@ -770,7 +765,7 @@ pub enum OverflowPolicy {
 }
 
 /// admin command codes used on the admin queue
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum AdminCommands {
     /// delete a destination
     DeleteDestination = 16,
@@ -789,7 +784,7 @@ pub enum AdminCommands {
 }
 
 /// server states
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ServerState {
     /// server is standby
     Standby = 3,

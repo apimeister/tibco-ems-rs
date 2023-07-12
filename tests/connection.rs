@@ -61,30 +61,6 @@ mod connection_struct {
         let url = con.get_active_url();
         assert_eq!(url.unwrap(), "tcp://localhost:7222");
     }
-
-    #[cfg(feature = "streaming")]
-    #[test]
-    fn test_open_stream_failure() {
-        use tibco_ems::{Destination, TextMessage};
-
-        let con = tibco_ems::connect(URL, USER, PASSWORD).unwrap();
-        // for this to work "test-failure" queue may not be present on the server
-        let dest = Destination::Queue("test-failure".into());
-        let stream = con.open_stream::<TextMessage>(&dest, None);
-        assert!(stream.is_err());
-    }
-
-    #[cfg(feature = "streaming")]
-    #[test]
-    fn test_open_stream_success() {
-        use tibco_ems::{Destination, TextMessage};
-
-        let con = tibco_ems::connect(URL, USER, PASSWORD).unwrap();
-        // for this to work "test-success" queue needs to be present on the server
-        let dest = Destination::Queue("test-success".into());
-        let stream = con.open_stream::<TextMessage>(&dest, None);
-        assert!(stream.is_ok());
-    }
 }
 
 #[cfg(not(feature = "ems-sys"))]

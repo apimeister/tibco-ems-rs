@@ -1,7 +1,7 @@
 # tibco-ems-rs
 
 [![Latest Version](https://img.shields.io/crates/v/tibco_ems.svg)](https://crates.io/crates/tibco_ems)
-[![codecov](https://codecov.io/gh/apimeister/tibco-ems-rs/branch/main/graph/badge.svg?token=NVYPCNKU0M)](https://codecov.io/gh/apimeister/tibco-ems-rs)
+[![codecov](https://codecov.io/gh/apimeister/tibco-ems-rs/branch/main/graph/badge.svg?token=NVYPCNKU0M)](https://codecov.io/gh/apimeister/tibco-ems-rs)  
 A high-level API for the Tibco EMS C library
 
 ## Build

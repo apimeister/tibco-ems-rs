@@ -142,7 +142,10 @@ mod admin {
 #[cfg(feature = "integration-tests")]
 #[cfg(test)]
 mod admin_integration {
-    use tibco_ems::admin::{list_all_queues, QueueInfo, list_all_topics, create_queue, delete_queue, create_topic, delete_topic, TopicInfo, create_bridge, delete_bridge, BridgeInfo, get_server_state};
+    use tibco_ems::admin::{
+        create_bridge, create_queue, create_topic, delete_bridge, delete_queue, delete_topic,
+        get_server_state, list_all_queues, list_all_topics, BridgeInfo, QueueInfo, TopicInfo,
+    };
 
     const USER: &str = "admin";
     const PASSWORD: &str = "";
@@ -184,7 +187,10 @@ mod admin_integration {
     fn test_admin_create_delete_queue_success() {
         let con = tibco_ems::admin::connect(URL, USER, PASSWORD).unwrap();
         let session = con.session().unwrap();
-        let queue = QueueInfo { name: "create_queue".into(), ..Default::default()};
+        let queue = QueueInfo {
+            name: "create_queue".into(),
+            ..Default::default()
+        };
         let create_res = create_queue(&session, &queue);
         assert!(create_res.is_ok());
         let delete_res = delete_queue(&session, "create_queue");
@@ -195,7 +201,10 @@ mod admin_integration {
     fn test_admin_create_delete_topic_success() {
         let con = tibco_ems::admin::connect(URL, USER, PASSWORD).unwrap();
         let session = con.session().unwrap();
-        let topic = TopicInfo { name: "create_topic".into(), ..Default::default()};
+        let topic = TopicInfo {
+            name: "create_topic".into(),
+            ..Default::default()
+        };
         let create_res = create_topic(&session, &topic);
         assert!(create_res.is_ok());
         let delete_res = delete_topic(&session, "create_topic");
@@ -206,13 +215,23 @@ mod admin_integration {
     fn test_admin_create_delete_bridge_success() {
         let con = tibco_ems::admin::connect(URL, USER, PASSWORD).unwrap();
         let session = con.session().unwrap();
-        let queue = QueueInfo { name: "create_bridge".into(), ..Default::default()};
+        let queue = QueueInfo {
+            name: "create_bridge".into(),
+            ..Default::default()
+        };
         let _ = create_queue(&session, &queue).unwrap();
-        let topic = TopicInfo { name: "create_bridge".into(), ..Default::default()};
+        let topic = TopicInfo {
+            name: "create_bridge".into(),
+            ..Default::default()
+        };
         let _ = create_topic(&session, &topic).unwrap();
         let queue = tibco_ems::Destination::Queue("create_bridge".into());
         let topic = tibco_ems::Destination::Topic("create_bridge".into());
-        let bridge = BridgeInfo { source: topic, target: queue, selector: None};
+        let bridge = BridgeInfo {
+            source: topic,
+            target: queue,
+            selector: None,
+        };
         let create_res = create_bridge(&session, &bridge);
         assert!(create_res.is_ok());
         let delete_res = delete_bridge(&session, &bridge);
@@ -228,5 +247,4 @@ mod admin_integration {
         let server_state_res = get_server_state(&session);
         assert!(server_state_res.is_ok());
     }
-
 }

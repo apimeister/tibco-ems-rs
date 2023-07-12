@@ -3,10 +3,10 @@
 use super::{Connection, Destination, MapMessage, Message, Session, TypedValue};
 use enum_extract::extract;
 use log::{error, trace, warn};
-use std::collections::HashMap;
-use std::io::Error;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::io::Error;
 
 const ADMIN_QUEUE_NAME: &str = "$sys.admin";
 const DESTINATION_TYPE_QUEUE: i32 = 1;

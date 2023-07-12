@@ -18,7 +18,7 @@ enum_extract = "0.1"
 opentelemetry = { version = "0.19", optional = true }
 
 [features]
-default = ["ems-sys", "serde", "integration-tests", "streaming"]
+default = ["ems-sys", "serde"]
 streaming = ["futures"]
 ems-sys = ["dep:tibco_ems-sys"]
 tracing = ["dep:opentelemetry"]

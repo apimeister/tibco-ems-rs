@@ -40,7 +40,15 @@ jobs:
           tar vxzf TIB_ems-ce_${{ env.TIB_VERSION }}/tar/TIB_ems-ce_${{ env.TIB_VERSION }}_linux_x86_64-c_dev_kit.tar.gz
           tar vxzf TIB_ems-ce_${{ env.TIB_VERSION }}/tar/TIB_ems-ce_${{ env.TIB_VERSION }}_linux_x86_64-c_dotnet_client.tar.gz
           tar vxzf TIB_ems-ce_${{ env.TIB_VERSION }}/tar/TIB_ems-ce_${{ env.TIB_VERSION }}_linux_x86_64-thirdparty.tar.gz
+          tar vxzf TIB_ems-ce_${{ env.TIB_VERSION }}/tar/TIB_ems-ce_${{ env.TIB_VERSION }}_linux_x86_64-server.tar.gz
+          tar vxzf TIB_ems-ce_${{ env.TIB_VERSION }}/tar/TIB_ems-ce_${{ env.TIB_VERSION }}_linux_x86_64-samples_src.tar.gz
           rm -rvf TIB*
+          cp -v opt/tibco/ems/10.2/samples/config/tibemsd.conf opt/tibco/ems/10.2/bin
+          mkdir opt/tibco/ems/10.2/bin/datastore
+          sed -i "s/authorization.*/authorization = enabled/"
+          echo "test-success" > opt/tibco/ems/10.2/bin/queues.conf
+          echo "test-success" > opt/tibco/ems/10.2/bin/topics.conf
+          cd opt/tibco/ems/10.2/bin && tibemsd &
       - name: Install Rust
         run: rustup update stable
       - name: Install cargo-llvm-cov

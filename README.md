@@ -1,9 +1,10 @@
-# tibco_ems
+# tibco-ems-rs
+
 [![Latest Version](https://img.shields.io/crates/v/tibco_ems.svg)](https://crates.io/crates/tibco_ems)
+[![codecov](https://codecov.io/gh/apimeister/tibco-ems-rs/branch/main/graph/badge.svg?token=NVYPCNKU0M)](https://codecov.io/gh/apimeister/tibco-ems-rs)
+A high-level API for the Tibco EMS C library
 
-A high-level API for the Tibco EMS C library. 
-
-# Build
+## Build
 
 To build this crate, the TIBCO EMS C library must either be in the LD_LIBRARY_PATH or alternatively a EMS_HOME environment variable must be set.
 
@@ -84,7 +85,7 @@ fn main() {
 
 More examples can be found in the examples directory.
 
-# License
-tibco_ems is licensed under Apache License, Version 2.0 (LICENSE-APACHE or http://www.apache.org/licenses/LICENSE-2.0).
+## License
 
+tibco-ems-rs is licensed under [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0) [LICENSE](LICENSE).  
 TIBCO Enterprise Messaging Service, and all related components therein are property of TIBCO Software, and are not provided with this software package. Refer to your own TIBCO License terms for details.

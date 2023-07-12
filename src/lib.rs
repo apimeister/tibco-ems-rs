@@ -1,28 +1,28 @@
 #![warn(missing_docs)]
 //! Tibco EMS binding.
 
+use std::collections::HashMap;
+use std::fmt;
+use std::io::Error;
+use std::sync::Arc;
+use enum_extract::extract;
+
 #[cfg(feature = "ems-sys")]
 use {
     log::{error, trace},
-    std::ffi::c_void,
-    std::ffi::CStr,
-    std::ffi::CString,
+    std::ffi::{c_void, CStr, CString},
     std::io::ErrorKind,
     std::ops::Deref,
     tibco_ems_sys::{tibemsDestinationType, tibemsMsgType, tibems_bool, tibems_status},
 };
 
-use enum_extract::extract;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::fmt;
-use std::io::Error;
-use std::sync::Arc;
 
-pub mod admin;
 #[cfg(feature = "streaming")]
 pub mod stream;
+
+pub mod admin;
 
 /// holds the native Connection pointer
 #[allow(dead_code)]
@@ -409,10 +409,10 @@ impl Connection {
         Ok("".to_string())
     }
 
-    // open a consumer as stream of messages
+    /// open a consumer as stream of messages
     #[cfg(feature = "streaming")]
-    pub fn open_stream<'stream, T: Into<Message>>(
-        &'stream self,
+    pub fn open_stream<T: Into<Message>>(
+        &self,
         destination: &Destination,
         selector: Option<&str>,
     ) -> Result<stream::MessageStream<T>, Error> {

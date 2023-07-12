@@ -1,20 +1,21 @@
-use super::BytesMessage;
-use super::Connection;
-use super::Consumer;
-use super::Message;
-use super::Session;
-use super::TextMessage;
-use futures::task::Context;
-use futures::task::Poll;
+//! Tibco EMS streaming functions
+
+use super::{BytesMessage, Connection, Consumer, Message, Session, TextMessage};
+use futures::task::{Context, Poll};
 use futures::Stream;
 use std::ops::Deref;
 use std::pin::Pin;
 use std::rc::Rc;
 
+/// Represents a Message as a Stream
 pub struct MessageStream<T> {
+    /// Reference counting pointer to a Connection
     pub connection: Rc<Connection>,
+    /// Reference counting pointer to a Session
     pub session: Rc<Session>,
+    /// Reference counting pointer to a Consumer
     pub consumer: Rc<Consumer>,
+    /// Optional Message
     pub message: Option<T>,
 }
 
@@ -26,18 +27,15 @@ impl Stream for MessageStream<TextMessage> {
         let result = consumer.receive_message(None);
         match result {
             Ok(result) => match result {
-                Some(msg) => match &msg {
-                    Message::TextMessage(text_message) => Poll::Ready(Some(text_message.clone())),
-                    _ => Poll::Ready(None),
-                },
-                None => Poll::Ready(None),
+                Some(Message::TextMessage(ref text_message)) => Poll::Ready(Some(text_message.clone())),
+                _ => Poll::Ready(None)
             },
             Err(_err) => Poll::Ready(None),
         }
     }
 }
 
-impl<'dest> Stream for MessageStream<BytesMessage> {
+impl Stream for MessageStream<BytesMessage> {
     type Item = BytesMessage;
 
     fn poll_next(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
@@ -45,13 +43,8 @@ impl<'dest> Stream for MessageStream<BytesMessage> {
         let result = consumer.receive_message(None);
         match result {
             Ok(result) => match result {
-                Some(msg) => match &msg {
-                    Message::BytesMessage(bytes_message) => {
-                        Poll::Ready(Some(bytes_message.clone()))
-                    }
-                    _ => Poll::Ready(None),
-                },
-                None => Poll::Ready(None),
+                Some(Message::BytesMessage(ref bytes_message)) => Poll::Ready(Some(bytes_message.clone())),
+                _ => Poll::Ready(None)
             },
             Err(_err) => Poll::Ready(None),
         }

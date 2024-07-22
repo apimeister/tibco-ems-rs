@@ -15,7 +15,7 @@ tibco_ems-sys = { version = "1", optional = true }
 serde = { version = "1", features = ["derive"] , optional = true}
 futures = { version = "0.3", optional = true }
 enum_extract = "0.1"
-opentelemetry = { version = "0.22", optional = true }
+opentelemetry = { version = "0.24", optional = true }
 
 [features]
 default = ["ems-sys", "serde"]

@@ -1,3 +1,7 @@
+# 0.5.2 2024-09-23
+
+* deps
+
 # 0.5.1 2023-01-27
 
 * support expiration property on queues/topics

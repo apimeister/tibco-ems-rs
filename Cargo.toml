@@ -1,6 +1,6 @@
 [package]
 name = "tibco_ems"
-version = "0.5.1"
+version = "0.5.2"
 authors = ["Jens Walter <jens@apimeister.com>"]
 edition = "2021"
 license = "Apache-2.0"
@@ -15,7 +15,7 @@ tibco_ems-sys = { version = "1", optional = true }
 serde = { version = "1", features = ["derive"] , optional = true}
 futures = { version = "0.3", optional = true }
 enum_extract = "0.1"
-opentelemetry = { version = "0.22", optional = true }
+opentelemetry = { version = "0.25", optional = true }
 
 [features]
 default = ["ems-sys", "serde"]
